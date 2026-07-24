@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}
+
+{% block title %}Подтверждение email{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h2>Проверьте вашу почту</h2>
+    <p>Мы отправили письмо со ссылкой для подтверждения на <strong>{{ user_email }}</strong>.</p>
+    <p>Пожалуйста, перейдите по ссылке, чтобы завершить регистрацию.</p>
+    <a href="{% url 'users:login' %}" class="btn btn-outline-secondary">Вернуться на вход</a>
+</div>
+{% endblock %}

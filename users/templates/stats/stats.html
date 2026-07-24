@@ -1,0 +1,119 @@
+{% extends "core/base.html" %}
+
+{% block title %}Статистика{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">📊 Статистика</h1>
+
+    <div class="row g-4">
+        <!-- Общие показатели -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Всего попыток</h5>
+                    <p class="display-6">{{ total_attempts }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">Успешно</h5>
+                    <p class="display-6">{{ successful }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-danger">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-danger">Неуспешно</h5>
+                    <p class="display-6">{{ failed }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-info">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-info">Уникальных получателей</h5>
+                    <p class="display-6">{{ unique_recipients }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-2">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Всего рассылок</h5>
+                    <p class="display-6">{{ total_mailings }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">Активных</h5>
+                    <p class="display-6">{{ active_mailings }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-danger">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-danger">Завершённых</h5>
+                    <p class="display-6">{{ finished_mailings }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-warning">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-warning">Приостановленных</h5>
+                    <p class="display-6">{{ paused_mailings }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Детализация по рассылкам</h5>
+                </div>
+                <div class="card-body">
+                    {% if mailing_stats %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Рассылка</th>
+                                        <th>Всего попыток</th>
+                                        <th>Успешно</th>
+                                        <th>Неуспешно</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in mailing_stats %}
+                                        <tr>
+                                            <td>{{ item.mailing.message.subject }}</td>
+                                            <td>{{ item.total }}</td>
+                                            <td class="text-success">{{ item.success }}</td>
+                                            <td class="text-danger">{{ item.failed }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Нет данных по рассылкам.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

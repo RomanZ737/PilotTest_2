@@ -1,0 +1,56 @@
+{% load user_tags %}
+
+<div class="bg-white border-bottom box-shadow p-3 px-md-4 mb-3 " >
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between ">
+        <h5 class="my-0 font-weight-normal">SPAM SERVICE</h5>
+        {% if user.is_authenticated %}
+        <nav class="d-flex align-items-center gap-2">
+            <div class="dropdown">
+                <a class="btn btn-outline-primary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    {% if user.first_name or user.last_name %}
+                        {{ user.first_name }} {{ user.last_name }}
+                    {% else %}
+                        {{ user.username }}
+                    {% endif %}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end text-start">
+                    <li><a class="dropdown-item" href="{% url 'users:user_update' %}">Профиль</a></li>
+                    <li>
+                        <form method="post" action="{% url 'users:logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item text-start" style="border: none; background: none; width: 100%;">Выйти</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Нижняя строка: кнопки навигации, выровненные влево -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'core:home' %}">Главная</a>
+        <a class="btn {% if request.resolver_match.view_name == 'mailing:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'mailing:list' %}">Рассылки</a>
+        <a class="btn {% if request.resolver_match.view_name == 'recipient:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'recipient:list' %}">Получатели</a>
+        <a class="btn {% if request.resolver_match.view_name == 'message:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'message:list' %}">Сообщения</a>
+        <a class="btn {% if request.resolver_match.view_name == 'history:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'history:list' %}">История</a>
+        <a class="btn {% if request.resolver_match.view_name == 'mailing:create' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'mailing:create' %}" >+ Создать рассылку</a>
+        <a class="btn {% if request.resolver_match.view_name == 'recipient:create' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'recipient:create' %}" >+ Создать получателя</a>
+        <a class="btn {% if request.resolver_match.view_name == 'message:create' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'message:create' %}" >+ Создать сообщение</a>
+        <a class="btn {% if request.resolver_match.view_name == 'stats:stats' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'stats:stats' %}">Статистика</a>
+        {% if request.user|has_group:'Managers' %}
+        <a class="btn {% if request.resolver_match.view_name == 'users:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{% url 'users:list' %}" >Пользователи</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

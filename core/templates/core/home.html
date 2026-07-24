@@ -1,0 +1,93 @@
+<!-- home.html -->
+{% extends "core/base.html" %}
+
+{% block title %}SPAM SERVICE – Главная{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Добро пожаловать в SPAM SERVICE</h1>
+
+    <!-- Карточки со статистикой -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-primary">
+                        <i class="bi bi-envelope-paper"></i> Всего рассылок
+                    </h5>
+                    <p class="display-4 fw-bold">{{ total_mailing_number }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">
+                        <i class="bi bi-play-circle"></i> Активных рассылок
+                    </h5>
+                    <p class="display-4 fw-bold">{{ mailings|length }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-info">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-info">
+                        <i class="bi bi-people"></i> Получателей
+                    </h5>
+                    <p class="display-4 fw-bold">{{ total_recipients_number }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список активных рассылок -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">📬 Активные рассылки</h5>
+        </div>
+        <div class="card-body">
+            {% if mailings %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Тема письма</th>
+                                <th>Начало</th>
+                                <th>Окончание</th>
+                                <th>Статус</th>
+                                <th>Получатели</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mailing in mailings %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td><a href="{% url 'mailing:detail' mailing.pk %}">
+                                        {{ mailing.message.subject }}
+                                        </a>
+                                    </td>
+                                    <td>{{ mailing.start_time|date:"d.m.Y H:i" }}</td>
+                                    <td>{{ mailing.end_time|date:"d.m.Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            {{ mailing.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ mailing.recipients.count }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">На данный момент нет активных рассылок.</p>
+
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
