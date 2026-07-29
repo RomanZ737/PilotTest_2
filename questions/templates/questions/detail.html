@@ -1,0 +1,322 @@
+{% extends "core/base.html" %}
+{% load django_bootstrap5 %}
+{% load question_filters %}
+
+{% block title %}Просмотр вопроса #{{ question.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4" id="head">
+    {# Хлебные крошки #}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{% url 'questions:list' %}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5" aria-current="page">Вопрос #{{ question.id }}</li>
+        </ol>
+    </nav>
+
+    {# Основной контент #}
+    <div class="row align-items-stretch">
+        {# Левая колонка – основное содержание #}
+        <div class="col-lg-12">
+            {# Вкладки #}
+            <ul class="nav nav-tabs mb-2" id="questionTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active"
+                            id="question-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#question-pane"
+                            type="button"
+                            role="tab">
+                        <i class="bi bi-question-circle"></i> Вопрос
+                    </button>
+                </li>
+                {% if draft %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="draft-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#draft-pane"
+                                type="button"
+                                role="tab">
+                            <i class="bi bi-pencil-square"></i> Черновик
+                            {% if draft.is_new %}
+                                <span class="badge bg-warning text-dark ms-1">new</span>
+                            {% endif %}
+                        </button>
+                    </li>
+                {% endif %}
+                {% if paraphrases %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="paraphrase-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#paraphrase-pane"
+                                type="button"
+                                role="tab">
+                            <i class="bi bi-arrow-repeat"></i> Перефраз
+                            <span class="badge bg-info text-white">{{ paraphrases|length }}</span>
+                        </button>
+                    </li>
+                {% endif %}
+            </ul>
+
+            {# Строка с шапкой вопроса и карточкой информации #}
+            <div class="row align-items-stretch">
+                {# Левая колонка – основное содержание #}
+<div class="col-lg-9 pe-0">
+    {# Тело карточки вопроса (шапка и тело внутри) #}
+    <div class="card border-top-0 rounded-top-0 border-{{ question|get_border_color }} shadow-sm">
+        {% include "questions/question_card.html" with item=question type="question" %}
+    </div>
+</div>
+
+                {# Правая колонка: карточка информации #}
+                <div class="col-lg-3 ps-0">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light py-1">
+                            <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-5">ID</dt>
+                                <dd class="col-sm-7">{{ question.id }}</dd>
+
+                                <dt class="col-sm-5">Тема</dt>
+                                <dd class="col-sm-7">{{ question.theme.name }}</dd>
+
+                                <dt class="col-sm-5">Тип ВС</dt>
+                                <dd class="col-sm-7">{{ question.get_ac_type_display }}</dd>
+
+                                <dt class="col-sm-5">Тип вопроса</dt>
+                                <dd class="col-sm-7">{{ question.get_q_kind_display }}</dd>
+
+                                <dt class="col-sm-5">Вес</dt>
+                                <dd class="col-sm-7">{{ question.q_weight }}</dd>
+
+                                <dt class="col-sm-5">Создан</dt>
+                                <dd class="col-sm-7">{{ question.created_at|date:"d.m.Y H:i" }}</dd>
+
+                                <dt class="col-sm-5">Обновлён</dt>
+                                <dd class="col-sm-7">{{ question.updated_at|date:"d.m.Y H:i" }}</dd>
+
+                                {% if question.published_at %}
+                                    <dt class="col-sm-5">Опубликован</dt>
+                                    <dd class="col-sm-7">{{ question.published_at|date:"d.m.Y H:i" }}</dd>
+                                {% endif %}
+
+                                <dt class="col-sm-5">Статус</dt>
+                                <dd class="col-sm-7">
+                                    {% if question.is_published %}
+                                        <span class="badge bg-success">Опубликован</span>
+                                    {% elif question.is_archived %}
+                                        <span class="badge bg-secondary">Архивный</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Не опубликован</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{# История и комментарии #}
+<div class="row mt-4" id="history">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h5 class="mb-0"><i class="bi bi-clock-history"></i> История</h5>
+    <div class="d-flex gap-1 align-items-center flex-wrap">
+        {# Поиск по пользователю #}
+        <form method="get" action="?{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}#history" class="d-flex gap-1">
+    <input type="text" name="user" class="form-control form-control-sm"
+           placeholder="Поиск по пользователю..."
+           value="{{ request.GET.user|default:'' }}"
+           style="width: 180px;">
+    <button type="submit" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-search"></i>
+    </button>
+    {% if request.GET.user %}
+        <a href="?{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}#history" class="btn btn-sm btn-outline-danger" title="Сбросить фильтр">
+            <i class="bi bi-x-circle"></i>
+        </a>
+    {% endif %}
+</form>
+
+        {# Фильтр по действиям #}
+<div class="btn-group btn-group-sm" role="group">
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=all#history"
+       class="btn btn-outline-secondary {% if not request.GET.action or request.GET.action == 'all' %}active{% endif %}">
+        Все
+    </a>
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=published#history"
+       class="btn btn-outline-secondary {% if request.GET.action == 'published' %}active{% endif %}">
+        <span class="badge bg-success">Публикация</span>
+    </a>
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=unpublished#history"
+       class="btn btn-outline-secondary {% if request.GET.action == 'unpublished' %}active{% endif %}">
+        <span class="badge bg-warning text-dark">Снятие</span>
+    </a>
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=created#history"
+       class="btn btn-outline-secondary {% if request.GET.action == 'created' %}active{% endif %}">
+        <span class="badge bg-info">Создание</span>
+    </a>
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=updated_field#history"
+       class="btn btn-outline-secondary {% if request.GET.action == 'updated_field' %}active{% endif %}">
+        <span class="badge bg-primary">Изменение</span>
+    </a>
+</div>
+
+{# Сортировка #}
+         {# Сортировка по дате #}
+<div class="btn-group btn-group-sm">
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}sort=date_desc#history"
+       class="btn btn-outline-secondary {% if request.GET.sort == 'date_desc' or not request.GET.sort %}active{% endif %}"
+       title="Сначала новые">
+        <i class="bi bi-arrow-down"></i>
+    </a>
+    <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}sort=date_asc#history"
+       class="btn btn-outline-secondary {% if request.GET.sort == 'date_asc' %}active{% endif %}"
+       title="Сначала старые">
+        <i class="bi bi-arrow-up"></i>
+    </a>
+</div>
+
+    </div>
+</div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 18%;">Пользователь</th>
+                                <th style="width: 10%;">Действие</th>
+                                <th style="width: 50%;">Комментарий</th>
+                                <th style="width: 12%;">Дата</th>
+                                <th style="width: 10%;" class="text-end">Тип</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if history %}
+                                {% for h in history %}
+                                    <tr>
+                                        <td>
+                                            <small>
+                                                {{ h.user.first_name }} {{ h.user.last_name }}
+                                                <br>
+                                                <span class="text-muted">{{ h.user.email }}</span>
+                                            </small>
+                                        </td>
+                                        <td>
+    {% for action in h.actions.all %}
+        <span class="badge bg-{{ action.action_type|get_action_color }}">
+            {{ action.get_action_type_display }}
+        </span>
+        {% if action.field_name %}
+            <br>
+            <small class="text-muted">→ {{ action.field_name }}</small>
+        {% endif %}
+    {% endfor %}
+</td>
+                                       <td style="width: 50%; max-width: 350px;">
+    {% if h.comments.exists %}
+        {% for comment in h.comments.all %}
+            <div class="comment-item">
+                <div class="d-flex align-items-start gap-2">
+                    <textarea readonly
+                              class="comment-textarea"
+                              rows="3">{{ comment.text|striptags }}</textarea>
+
+                    {% if comment == last_comment and comment.user == request.user %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary flex-shrink-0"
+                                data-bs-toggle="modal"
+                                data-bs-target="#actionModal"
+                                data-action-url="{% url 'history:comment_update' comment.pk %}"
+                                data-action-title="Редактировать комментарий"
+                                data-action-text="Измените текст комментария:"
+                                data-btn-class="btn-primary"
+                                data-btn-text="Сохранить"
+                                data-comment-text="{{ comment.text|escape }}"
+                                title="Редактировать комментарий">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <button class="comment-toggle-btn" type="button" style="display: none;">
+                        Читать далее
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <span class="text-muted">Нет комментариев</span>
+    {% endif %}
+</td>
+                                        <td>
+                                            <small>{{ h.created_at|date:"d.m.Y H:i" }}</small>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="badge bg-light text-dark">{{ h.get_entity_type_display }}</span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        История изменений отсутствует.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{# Универсальное модальное окно для действий с комментарием #}
+<div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <form method="post" id="actionForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="actionModalLabel">Подтверждение действия</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh;">
+                    <p id="actionModalText">Вы уверены, что хотите выполнить это действие?</p>
+                    <div class="mb-3">
+                        <label for="actionComment" class="form-label">Комментарий <span class="text-danger">*</span></label>
+                        <textarea name="comment" id="actionComment"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Опишите причину действия..."
+                                  style="resize: vertical; min-height: 100px; white-space: pre-wrap; word-wrap: break-word;"
+                                  required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="actionSubmitBtn">Подтвердить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{# Подключение JavaScript #}
+<script src="/static/js/detail.js"></script>
+{% endblock %}

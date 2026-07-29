@@ -1,5 +1,6 @@
 from django.db import models
 from core.enums import ACType, QType
+from config import settings
 
 
 
@@ -31,12 +32,13 @@ class BaseQuestion(models.Model):
     ac_type = models.CharField(max_length=10, choices=ACType.choices, verbose_name='Тип ВС')
 
     # Дополнительные поля
-    is_published = models.BooleanField(default=False, verbose_name='Опубликован')
-    published_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    q_kind = models.BooleanField(
-        default=False,
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    q_kind = models.CharField(
+        max_length=20,
+        choices=QType.choices,
+        default=QType.SINGLE,
         verbose_name='Один или Несколько правильных ответов'
     )
     q_weight = models.FloatField(
@@ -56,7 +58,7 @@ class BaseQuestion(models.Model):
         verbose_name='Картинка к вопросу'
     )
     comment_img = models.ImageField(
-        upload_to='comments/',
+        upload_to='questions/comments/',
         blank=True,
         null=True,
         verbose_name='Картинка пояснения'
@@ -82,19 +84,38 @@ class BaseQuestion(models.Model):
 class Question(BaseQuestion):
     """Оригинальный вопрос-шаблон. Версионируется, редактируется."""
 
+    is_published = models.BooleanField(default=False,
+                                       verbose_name='Опубликован',
+                                       help_text='Доступен для тестов')
+
+    published_at =  models.DateTimeField(null=True, blank=True, verbose_name='Дата публикации')
+
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name='Архивный',
+        help_text='Заменён на новую версию'
+    )
+
     previous_version = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='previous_versions',
+        related_name='archived_versions',
         verbose_name='Предыдущая версия'
     )
-    is_draft = models.BooleanField(default=True, verbose_name='Черновик')
 
-    is_paraphrased = models.BooleanField(default=False,
-                                         verbose_name='Does the question paraphrased',
-                                         help_text='Перефразирован ли вопрос')
+
+    # Кто создал вопрос
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_questions',
+        verbose_name='Создатель'
+    )
+
+
 
     def get_answers(self):
         """Получить ответы для оригинального вопроса."""
@@ -107,36 +128,140 @@ class Question(BaseQuestion):
 
 
 
-class QuestionSnapshot(BaseQuestion):
+class QuestionParaphrase(BaseQuestion):
     """Перефразированный вопрос для конкретного теста."""
+
     original_question = models.ForeignKey(Question,
                                          verbose_name="Original question",
                                          on_delete=models.CASCADE,
+                                         related_name='paraphrases',
                                          help_text='Это перефразированный вопрос')
+
+    is_published = models.BooleanField(
+        default=False,
+        verbose_name='Опубликован',
+        help_text='Доступен для использования в тестах'
+    )
+
+    usage_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество использований'
+    )
+
+    # Кто создал перефразировку
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_paraphrases',
+        verbose_name='Создатель'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Перефразированный вопрос"
+        verbose_name_plural = "Перефразированные вопросы"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['original_question', 'is_published']),
+        ]
 
     def get_answers(self):
         """Получить ответы из оригинального вопроса."""
         return self.original_question.get_answers()
 
+    def __str__(self):
+        return f'Перефразирование: {self.question[:50]}...'
+
+
+class QuestionDraft(BaseQuestion):
+    """Черновик вопроса. Существует параллельно с активным вопросом."""
+
+    # Связь с оригинальным вопросом
+    original_question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        related_name='drafts',
+        verbose_name='Оригинальный вопрос'
+    )
+
+    # Кто создал черновик
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_drafts',
+        verbose_name='Создатель черновика'
+    )
+
+    # Примечание: флаги is_published, is_draft, is_archived НЕ НУЖНЫ
+    # Это черновик по определению
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
-        ordering = ['theme__name', 'question']
-        verbose_name = "Перефразированный Вопрос"
-        verbose_name_plural = "Перефразированные вопросы Вопросы"
+        verbose_name = "Черновик вопроса"
+        verbose_name_plural = "Черновики вопросов"
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['original_question']),
+            models.Index(fields=['created_by', 'updated_at']),
+            models.Index(fields=['-created_at']),  # для быстрой сортировки
+        ]
 
+    def get_answers(self):
+        """Получить ответы для оригинального вопроса."""
+        return self.answers.all()
 
+    def __str__(self):
+        return f'Черновик: {self.question[:50]}...'
 
 
 # Модель ответа
 class Answer(models.Model):
-    answer = models.CharField(max_length=200, verbose_name="Формулировка ответа")
-    question = models.ForeignKey(Question, related_name='answers', on_delete=models.CASCADE)
-    is_correct = models.BooleanField(default=False, verbose_name='Правильный Ответ на вопрос')
+    answer = models.CharField(max_length=1000,
+                              verbose_name="Формулировка ответа"
+                              )
+
+    question = models.ForeignKey(Question,
+                                 related_name='answers',
+                                 on_delete=models.CASCADE
+                                 )
+
+    question_draft = models.ForeignKey(
+        QuestionDraft,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='answers'
+    )
+
+    is_correct = models.BooleanField(default=False,
+                                     verbose_name='Правильный Ответ на вопрос'
+                                     )
+
+    answer_order = models.PositiveIntegerField(default=0,
+                                               verbose_name='Порядок отображения'
+                                               )
+
+    def save(self, *args, **kwargs):
+        if not self.question and not self.question_draft:
+            raise ValueError("Answer должен быть привязан либо к Question, либо к QuestionDraft")
+        if self.question and self.question_draft:
+            raise ValueError("Answer не может быть привязан одновременно к Question и QuestionDraft")
+        super().save(*args, **kwargs)
 
     class Meta:
-        ordering = ['question']
+        ordering = ['question', 'answer_order']
         verbose_name = "Ответ"
         verbose_name_plural = "Ответы"
 
-
     def __str__(self):
-        return f'{self.question.question[:50]}, {self.answer[:50]}...'
+        if self.question:
+            return f'{self.question.question[:50]}, {self.answer[:50]}...'
+        elif self.question_draft:
+            return f'{self.question_draft.question[:50]}, {self.answer[:50]}...'
+        return f'{self.answer[:50]}...'

@@ -1,0 +1,153 @@
+{% load django_bootstrap5 %}
+{% load question_filters %}
+{% load sanitize_filters %}
+
+<div class="card border-{{ item|get_border_color }} border-3 shadow-sm mb-0">
+    {# Шапка с кнопками действий #}
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            {# Иконка типа #}
+            {% if type == "question" %}
+                <i class="bi bi-question-circle text-primary fs-5"></i>
+                <span class="fw-bold">Вопрос</span>
+            {% elif type == "draft" %}
+                <i class="bi bi-pencil-square text-warning fs-5"></i>
+                <span class="fw-bold">Черновик</span>
+            {% elif type == "paraphrase" %}
+                <i class="bi bi-arrow-repeat text-info fs-5"></i>
+                <span class="fw-bold">Перефраз</span>
+            {% endif %}
+
+            {# Кнопки действий #}
+            {% if not item.is_published and not item.is_archived %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-success"
+                        title="Опубликовать вопрос"
+                        data-bs-toggle="modal"
+                        data-bs-target="#actionModal"
+                        data-action-url="{% url 'questions:publish' item.pk %}"
+                        data-action-title="Опубликовать вопрос"
+                        data-action-text="Вы уверены, что хотите опубликовать этот вопрос? Необходим комментарий"
+                        data-btn-class="btn-success"
+                        data-btn-text="Опубликовать">
+                    <i class="bi bi-check-circle"></i>
+                </button>
+            {% endif %}
+
+            {% if item.is_published %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-warning"
+                        title="Снять с публикации"
+                        data-bs-toggle="modal"
+                        data-bs-target="#actionModal"
+                        data-action-url="{% url 'questions:publish' item.pk %}"
+                        data-action-title="Снять с публикации"
+                        data-action-text="Вы уверены, что хотите снять этот вопрос с публикации? Необходим комментарий"
+                        data-btn-class="btn-warning"
+                        data-btn-text="Снять с публикации">
+                    <i class="bi bi-eye-slash"></i>
+                </button>
+            {% endif %}
+
+            {% if type == "question" and not item.drafts.exists %}
+                <a href="#" class="btn btn-sm btn-outline-primary" title="Редактировать вопрос (создать черновик)">
+                    <i class="bi bi-pencil"></i>
+                </a>
+            {% endif %}
+
+            {% if type == "draft" %}
+                <a href="#" class="btn btn-sm btn-outline-primary" title="Редактировать черновик">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
+                <a href="#" class="btn btn-sm btn-outline-success" title="Опубликовать черновик">
+                    <i class="bi bi-check2-circle"></i>
+                </a>
+            {% endif %}
+
+            {% if type == "question" %}
+                <a href="#" class="btn btn-sm btn-outline-info" title="Создать перефраз">
+                    <i class="bi bi-arrow-repeat"></i>
+                </a>
+            {% endif %}
+        </div>
+
+        {# Бейджи статуса #}
+        <div>
+            {% if item.is_published %}
+                <span class="badge bg-success">Опубликован</span>
+            {% else %}
+                <span class="badge bg-warning text-dark">Не опубликован</span>
+            {% endif %}
+            {% if type == "paraphrase" %}
+                <span class="badge bg-info text-white">Использований: {{ item.usage_count }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Тело карточки #}
+    <div class="card-body">
+        <h5 class="card-title fw-bold">{{ item.question }}</h5>
+
+        {# Изображения комментария к ответу#}
+        {% if item.question_img %}
+            <div class="mt-3">
+                <div class="row justify-content-center">
+                    <div class="col-12 text-center">
+                        <img src="{{ item.question_img.url }}"
+                             alt="Пояснительное изображение"
+                             class="img-fluid rounded img-zoomable"
+                             style="max-width: 80%; max-height: 400px; object-fit: contain;"
+                             onclick="this.classList.toggle('zoomed')">
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Варианты ответов #}
+        <div class="mt-5 mb-5">
+    <div class="card border-primary">
+        <div class="card-header bg-primary bg-opacity-10 py-2">
+            <h6 class="mb-0 fw-bold text-primary">
+                <i class="bi bi-list-check me-2"></i>Варианты ответов
+            </h6>
+        </div>
+        <div class="card-body p-2">
+            <div class="list-group list-group-flush">
+                {% for answer in item.get_answers %}
+                    <div class="list-group-item d-flex align-items-center gap-2 {% if answer.is_correct %}list-group-item-success border-success{% endif %}">
+                        <span class="badge bg-secondary rounded-pill">{{ forloop.counter }}</span>
+                        <span class="flex-grow-1">{{ answer.answer }}</span>
+                        {% if answer.is_correct %}
+                            <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+        {# Пояснение #}
+        {% if item.comment_text %}
+            <div class="mt-3">
+                <h6 class="text-muted">Пояснение:</h6>
+                <p class="card-text">{{ item.comment_text|safe_html }}</p>
+            </div>
+        {% endif %}
+
+        {# Изображения комментария к ответу#}
+        {% if item.comment_img %}
+            <div class="mt-3">
+                <div class="row justify-content-center">
+                    <div class="col-12 text-center">
+                        <img src="{{ item.comment_img.url }}"
+                             alt="Пояснительное изображение"
+                             class="img-fluid rounded img-zoomable"
+                             style="max-width: 80%; max-height: 400px; object-fit: contain;"
+                             onclick="this.classList.toggle('zoomed')">
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
