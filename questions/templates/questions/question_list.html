@@ -6,12 +6,7 @@
 {% block content %}
 <div class="container mt-4">
     {# Заголовок и кнопка создания #}
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-        <h1 class="h2 mb-0">📝 Вопросы</h1>
-        <a href="#" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Создать вопрос
-        </a>
-    </div>
+    {% include 'questions/includes/sub_header.html'%}
 
     {# Форма поиска и фильтров #}
     <div class="card shadow-sm bg-gray-170 rounded-3 border-0 mb-2">
@@ -61,7 +56,7 @@
                     <select name="status" id="status" class="form-select">
                         <option value="">Все</option>
                         <option value="published" {% if request.GET.status == 'published' %}selected{% endif %}>Опубликован</option>
-                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Черновик</option>
+                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Не опубликован</option>
                     </select>
                 </div>
 
@@ -70,7 +65,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="{% url 'questions:list' %}" class="btn btn-outline-secondary w-100" title="Сбросить фильтры">
+                    <a href="{% url 'questions:question_list' %}" class="btn btn-outline-secondary w-100" title="Сбросить фильтры">
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </a>
                 </div>
@@ -98,7 +93,7 @@
                             <tr>
                                 <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                                 <td>
-                                    <a href="{% url 'questions:detail' question.pk %}" class="text-decoration-none text-dark">
+                                    <a href="{% url 'questions:question_detail' question.pk %}" class="text-decoration-none text-dark">
                                         {{ question.question|truncatechars:80 }}
                                     </a>
                                 </td>
@@ -108,7 +103,7 @@
                                     {% if question.is_published %}
                                         <span class="badge bg-success">Опубликован</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Черновик</span>
+                                        <span class="badge bg-warning">Не опубликован</span>
                                     {% endif %}
                                     {% if question.is_paraphrased %}
                                         <span class="badge bg-info ms-1">🔄</span>
@@ -116,20 +111,30 @@
                                 </td>
                                 <td class="text-end">
                                     {# Кнопка переключения публикации #}
-                                    <a href="#"
-                                       class="btn btn-sm btn-outline-{% if question.is_published %}warning{% else %}success{% endif %}"
-                                       title="{% if question.is_published %}Снять с публикации{% else %}Опубликовать{% endif %}"
-                                       onclick="return confirm('Вы уверены?');">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-{% if question.is_published %}warning{% else %}success{% endif %}"
+                                            title="{% if question.is_published %}Снять с публикации{% else %}Опубликовать{% endif %}"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#actionModal"
+                                            data-action-url="{% url 'questions:publish' question.pk %}"
+                                            data-action-title="{% if question.is_published %}Снять с публикации{% else %}Опубликовать вопрос{% endif %}"
+                                            data-action-text="{% if question.is_published %}Вы уверены, что хотите снять вопрос с публикации?{% else %}Вы уверены, что хотите опубликовать этот вопрос?{% endif %} Необходим комментарий."
+                                            data-btn-class="{% if question.is_published %}btn-warning{% else %}btn-success{% endif %}"
+                                            data-btn-text="{% if question.is_published %}Снять с публикации{% else %}Опубликовать{% endif %}"
+                                            data-question-text="{{ question.question|truncatechars:100 }}"
+                                            data-redirect-to="list">
                                         <i class="bi bi-{% if question.is_published %}eye-slash{% else %}eye{% endif %}"></i>
-                                    </a>
+                                    </button>
 
                                     {# Кнопка удаления #}
-                                    <a href="#"
-                                       class="btn btn-sm btn-outline-danger"
-                                       title="Удалить вопрос"
-                                       onclick="return confirm('Удалить вопрос? Это действие необратимо.');">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
+                                    <form method="post" action="{% url 'questions:question_delete' question.pk %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Это не обратимое действие, вы уверены, что хотите удалить вопрос:\n' +
+                                                 '{{question.question}}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         {% empty %}
@@ -200,4 +205,8 @@
 {% endif %}
     </div>
 </div>
+
+{% include 'questions/includes/publish_modal.html' %}
+<script src="/static/js/q_detail.js"></script>
+
 {% endblock %}

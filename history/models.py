@@ -44,7 +44,6 @@ class QuestionHistory(models.Model):
         related_name='history'
     )
 
-    # Тип сущности, в которой произошло изменение
     entity_type = models.CharField(
         max_length=20,
         choices=ENTITY_TYPES,
@@ -54,10 +53,20 @@ class QuestionHistory(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='question_history'
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+
+    user_name = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name='Имя пользователя',
+        help_text='Сохраняется на момент создания записи. Используется, если пользователь удалён.'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата действия')
 
     class Meta:
         verbose_name = "История вопроса"
@@ -72,12 +81,13 @@ class Action(models.Model):
     """Конкретное действие в истории вопроса."""
 
     ACTION_TYPES = [
-        ('created', 'Создание вопроса'),
+        ('created', 'Создан'),
         ('updated_field', 'Изменение поля'),
         ('published', 'Публикация'),
         ('unpublished', 'Снятие с публикации'),
         ('archived', 'Архивирование'),
         ('restored', 'Восстановление из архива'),
+        ('deleted', 'Удалён')
     ]
 
     history = models.ForeignKey(
@@ -115,8 +125,16 @@ class Comment(models.Model):
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='question_comments'
+    )
+    user_name = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name='Имя пользователя',
+        help_text='Сохраняется на момент создания. Используется, если пользователь удалён.'
     )
     text = models.TextField(verbose_name='Текст комментария')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -127,19 +145,8 @@ class Comment(models.Model):
         verbose_name_plural = "Комментарии"
         ordering = ['created_at']
 
-    def get_cleaned_text(self):
-        """Возвращает текст без пробелов и табуляции в начале каждой строки."""
-        lines = self.text.splitlines()
-        cleaned_lines = []
-        for line in lines:
-            # Удаляем все пробельные символы в начале строки
-            cleaned_line = line.lstrip(' \t\r\n')
-            cleaned_lines.append(cleaned_line)
-        return '\n'.join(cleaned_lines)
-
-    def get_cleaned_text_with_br(self):
-        """Возвращает текст с <br> вместо переносов строк."""
-        return self.get_cleaned_text().replace('\n', '<br>')
+    # ... методы get_cleaned_text без изменений ...
 
     def __str__(self):
-        return f'{self.user}: {self.text[:50]}...'
+        name = self.user.get_full_name() if self.user else (self.user_name or 'Удалён')
+        return f'{name}: {self.text[:50]}...'

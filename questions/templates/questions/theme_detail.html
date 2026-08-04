@@ -1,0 +1,78 @@
+{% extends "core/base.html" %}
+{% load django_bootstrap5 %}
+
+{% block title %}Тема: {{ theme.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    {# Хлебные крошки #}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{% url 'questions:themes_list' %}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5">{{ theme.name }}</li>
+        </ol>
+    </nav>
+
+    {# Карточка темы #}
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-primary border-3 shadow-sm mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-bookmark text-primary fs-5"></i>
+                        <span class="fw-bold">{{ theme.name }}</span>
+                    </div>
+                    <div>
+                        <a href="{% url 'questions:theme_update' theme.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {# Кнопка удаления #}
+                        <form method="post" action="{% url 'questions:theme_delete' theme.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Удалить тему «{{ theme.name }}»?\nВопросы этой темы полностью удаляться!.');">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    {% if theme.description %}
+                        <h6 class="text-muted mb-2">Описание:</h6>
+                        <p class="card-text">{{ theme.description }}</p>
+                    {% else %}
+                        <p class="text-muted fst-italic">Описание отсутствует</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# Боковая панель с информацией #}
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light py-2">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                </div>
+                <div class="card-body py-2">
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">ID</dt>
+                        <dd class="col-sm-7">{{ theme.id }}</dd>
+
+                        <dt class="col-sm-5">Вопросов</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-primary">{{ question_count|default:"0" }}</span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

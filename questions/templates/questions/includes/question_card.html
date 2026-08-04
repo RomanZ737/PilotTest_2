@@ -19,7 +19,7 @@
             {% endif %}
 
             {# Кнопки действий #}
-            {% if not item.is_published and not item.is_archived %}
+            {% if not item.is_published and not item.is_archived and not type == "draft" %}
                 <button type="button"
                         class="btn btn-sm btn-outline-success"
                         title="Опубликовать вопрос"
@@ -29,9 +29,27 @@
                         data-action-title="Опубликовать вопрос"
                         data-action-text="Вы уверены, что хотите опубликовать этот вопрос? Необходим комментарий"
                         data-btn-class="btn-success"
-                        data-btn-text="Опубликовать">
+                        data-btn-text="Опубликовать"
+                        data-question-text="{{ question.question|truncatechars:100 }}"
+                        data-redirect-to="detail">
                     <i class="bi bi-check-circle"></i>
                 </button>
+            {% else %}
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-success"
+                        title="Опубликовать черновик"
+                        data-bs-toggle="modal"
+                        data-bs-target="#actionModal"
+                        data-action-url="{% url 'questions:draft_publish' item.pk %}"
+                        data-action-title="Опубликовать черновик"
+                        data-action-text="Вы уверены, что хотите опубликовать черновик? Текущая версия вопроса станет архивной. Необходим комментарий."
+                        data-btn-class="btn-success"
+                        data-btn-text="Опубликовать"
+                        data-question-text="{{ item.question|truncatechars:100 }}">
+                    <i class="bi bi-check2-circle"></i>
+                </button>
+
             {% endif %}
 
             {% if item.is_published %}
@@ -50,18 +68,19 @@
             {% endif %}
 
             {% if type == "question" and not item.drafts.exists %}
-                <a href="#" class="btn btn-sm btn-outline-primary" title="Редактировать вопрос (создать черновик)">
+                <form method="post" action="{% url 'questions:draft_create' item.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-dark" title="Редактировать вопрос (создать черновик)">
                     <i class="bi bi-pencil"></i>
-                </a>
+                </button>
+            </form>
             {% endif %}
 
             {% if type == "draft" %}
-                <a href="#" class="btn btn-sm btn-outline-primary" title="Редактировать черновик">
+                <a href="{% url 'questions:draft_edit' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать черновик">
                     <i class="bi bi-pencil-square"></i>
                 </a>
-                <a href="#" class="btn btn-sm btn-outline-success" title="Опубликовать черновик">
-                    <i class="bi bi-check2-circle"></i>
-                </a>
+
             {% endif %}
 
             {% if type == "question" %}
@@ -69,6 +88,29 @@
                     <i class="bi bi-arrow-repeat"></i>
                 </a>
             {% endif %}
+
+            {# Кнопка удаления #}
+
+            {% if type == "draft" %}
+                <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Удалить черновик"
+                            onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            {% else %}
+                <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Удалить вопрос"
+                            onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            {% endif %}
+
         </div>
 
         {# Бейджи статуса #}

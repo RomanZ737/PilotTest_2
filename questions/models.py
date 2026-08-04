@@ -1,5 +1,6 @@
 from django.db import models
 from core.enums import ACType, QType
+from core.field_validators.validators import validate_file_size, validate_image
 from config import settings
 
 
@@ -15,7 +16,7 @@ class Themes(models.Model):
         verbose_name_plural = "Темы"
 
     def __str__(self):
-        return f'{self.name}, {self.description}'
+        return f'{self.name}'
 
 
 # ============================================
@@ -28,7 +29,7 @@ class BaseQuestion(models.Model):
     # Основное содержание
     question = models.TextField(verbose_name='Текст вопроса')
     # Имя темы связано с классом Theme
-    theme = models.ForeignKey('Themes', on_delete=models.PROTECT, verbose_name='Тема')
+    theme = models.ForeignKey('Themes', on_delete=models.CASCADE, verbose_name='Тема')
     ac_type = models.CharField(max_length=10, choices=ACType.choices, verbose_name='Тип ВС')
 
     # Дополнительные поля
@@ -53,12 +54,14 @@ class BaseQuestion(models.Model):
     # Изображения
     question_img = models.ImageField(
         upload_to='questions/img/',
+        validators=[validate_image],
         blank=True,
         null=True,
         verbose_name='Картинка к вопросу'
     )
     comment_img = models.ImageField(
         upload_to='questions/comments/',
+        validators=[validate_image],
         blank=True,
         null=True,
         verbose_name='Картинка пояснения'
@@ -69,15 +72,21 @@ class BaseQuestion(models.Model):
         verbose_name='Текст пояснения'
     )
 
-    class Meta:
-        abstract = True
-
-    def __str__(self):
-        return f'{self.theme.name}: {self.question[:50]}...'
-
     def get_answers(self):
         """Получить ответы для вопроса (будет переопределено)."""
         raise NotImplementedError
+
+    class Meta:
+        abstract = True
+
+
+    def __str__(self):
+        try:
+            return f'{self.theme.name}: {self.question[:50]}...'
+        except Exception:
+            return f'Question: {self.question[:50] if self.question else "?"}...'
+
+
 
 
 # Модель вопроса
@@ -115,7 +124,11 @@ class Question(BaseQuestion):
         verbose_name='Создатель'
     )
 
-
+    def delete(self, *args, **kwargs):
+        """При удалении вопроса удаляем и его предыдущую версию."""
+        if self.previous_version:
+            self.previous_version.delete()
+        super().delete(*args, **kwargs)
 
     def get_answers(self):
         """Получить ответы для оригинального вопроса."""
@@ -226,10 +239,13 @@ class Answer(models.Model):
                               verbose_name="Формулировка ответа"
                               )
 
-    question = models.ForeignKey(Question,
-                                 related_name='answers',
-                                 on_delete=models.CASCADE
-                                 )
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='answers'
+    )
 
     question_draft = models.ForeignKey(
         QuestionDraft,
@@ -248,9 +264,9 @@ class Answer(models.Model):
                                                )
 
     def save(self, *args, **kwargs):
-        if not self.question and not self.question_draft:
+        if not self.question_id and not self.question_draft_id:
             raise ValueError("Answer должен быть привязан либо к Question, либо к QuestionDraft")
-        if self.question and self.question_draft:
+        if self.question_id and self.question_draft_id:
             raise ValueError("Answer не может быть привязан одновременно к Question и QuestionDraft")
         super().save(*args, **kwargs)
 
@@ -260,8 +276,11 @@ class Answer(models.Model):
         verbose_name_plural = "Ответы"
 
     def __str__(self):
-        if self.question:
-            return f'{self.question.question[:50]}, {self.answer[:50]}...'
-        elif self.question_draft:
-            return f'{self.question_draft.question[:50]}, {self.answer[:50]}...'
+        try:
+            if self.question:
+                return f'{self.question.question[:50]}, {self.answer[:50]}...'
+            elif self.question_draft:
+                return f'{self.question_draft.question[:50]}, {self.answer[:50]}...'
+        except Exception:
+            pass
         return f'{self.answer[:50]}...'

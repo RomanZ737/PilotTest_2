@@ -1,0 +1,41 @@
+{# Универсальное модальное окно для действий с комментарием #}
+
+
+
+<div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <form method="post" id="actionForm">
+
+                <input type="hidden" name="redirect_to" id="redirectToInput" value="">
+
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="actionModalLabel">Подтверждение действия</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh;">
+                    {# Контекст: какой вопрос #}
+                    <div class="alert alert-light border mb-3">
+                        <small class="text-muted">Вопрос:</small><br>
+                        <strong id="actionModalQuestion">—</strong>
+                    </div>
+                    <p id="actionModalText">Вы уверены, что хотите выполнить это действие?</p>
+                    <div class="mb-3">
+                        <label for="actionComment" class="form-label">Комментарий <span class="text-danger">*</span></label>
+                        <textarea name="comment" id="actionComment"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Опишите причину действия..."
+                                  style="resize: vertical; min-height: 100px; white-space: pre-wrap; word-wrap: break-word;"
+                                  required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="actionSubmitBtn">Подтвердить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

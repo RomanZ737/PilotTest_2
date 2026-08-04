@@ -5,4 +5,4 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 
 class HomeListView(LoginRequiredMixin, RedirectView):
     """Перенаправляет на список вопросов."""
-    url = reverse_lazy('questions:list')
+    url = reverse_lazy('questions:question_list')

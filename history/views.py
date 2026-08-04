@@ -1,8 +1,10 @@
-from django.shortcuts import get_object_or_404, redirect
 from .models import Comment
+from django.views import View
+from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.views.generic import View
-
+from questions.models import Question
+from .models import QuestionHistory
+from django.urls import reverse
 
 
 # Редактирование комментариев (если комментарий последний)
@@ -35,5 +37,16 @@ class CommentUpdateView(View):
         comment.text = new_text
         comment.save()
         messages.success(request, 'Комментарий обновлён.')
-        return redirect('questions:detail', pk=comment.history.logical_question.pk)
+        return redirect(f"{reverse('questions:question_detail', kwargs={'pk': comment.history.logical_question.pk})}#history")
 
+
+
+
+
+
+class ClearHistoryView(View):
+    def post(self, request, question_pk):
+        question = get_object_or_404(Question, pk=question_pk)
+        count, _ = QuestionHistory.objects.filter(logical_question=question).delete()
+        messages.success(request, f'История вопроса #{question_pk} очищена. Удалено записей: {count}.')
+        return redirect('questions:question_detail', pk=question_pk)

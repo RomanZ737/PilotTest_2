@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
             name='Action',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action_type', models.CharField(choices=[('created', 'Создание вопроса'), ('updated_field', 'Изменение поля'), ('published', 'Публикация'), ('unpublished', 'Снятие с публикации'), ('archived', 'Архивирование'), ('restored', 'Восстановление из архива')], max_length=20)),
+                ('action_type', models.CharField(choices=[('created', 'Создан'), ('updated_field', 'Изменение поля'), ('published', 'Публикация'), ('unpublished', 'Снятие с публикации'), ('archived', 'Архивирование'), ('restored', 'Восстановление из архива')], max_length=20)),
                 ('field_name', models.CharField(blank=True, help_text='Для типа "updated_field"', max_length=100, null=True)),
                 ('old_value', models.TextField(blank=True, null=True)),
                 ('new_value', models.TextField(blank=True, null=True)),
