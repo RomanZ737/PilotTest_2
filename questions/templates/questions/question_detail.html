@@ -45,6 +45,9 @@
             </button>
         </li>
     {% endif %}
+
+
+
     {% if paraphrases %}
         <li class="nav-item" role="presentation">
             <button class="nav-link tab-paraphrase"
@@ -58,6 +61,22 @@
             </button>
         </li>
     {% endif %}
+
+
+    {% if question.previous_version %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link tab-archive"
+                id="archive-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#archive-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-archive"></i> Архив
+        </button>
+    </li>
+
+{% endif %}
+
 </ul>
 
     {# Содержимое вкладок #}
@@ -146,6 +165,9 @@
             </div>
         {% endif %}
 
+
+
+
         {# Вкладка Перефраз #}
         {% if paraphrases %}
             <div class="tab-pane fade" id="paraphrase-pane" role="tabpanel">
@@ -156,6 +178,38 @@
                 {% endfor %}
             </div>
         {% endif %}
+
+
+        {% if question.previous_version %}
+    <div class="tab-pane fade" id="archive-pane" role="tabpanel">
+        <div class="row">
+            <div class="col-lg-9 pe-0">
+                <div class="card border-top-0 rounded-top-0 border-secondary border-3 shadow-sm">
+                    {% include "questions/includes/question_card.html" with item=question.previous_version type="archive" parent_pk=question.pk %}
+                </div>
+            </div>
+            <div class="col-lg-3 ps-0">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-light py-1">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                    </div>
+                    <div class="card-body py-2">
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-5">ID</dt>
+                            <dd class="col-sm-7">{{ question.previous_version.id }}</dd>
+                            <dt class="col-sm-5">Создан</dt>
+                            <dd class="col-sm-7">{{ question.previous_version.created_at|date:"d.m.Y H:i" }}</dd>
+                            <dt class="col-sm-5">Статус</dt>
+                            <dd class="col-sm-7"><span class="badge bg-secondary">Архивный</span></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+
     </div>
 
     {# История и комментарии #}

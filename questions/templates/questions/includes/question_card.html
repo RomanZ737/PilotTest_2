@@ -16,10 +16,14 @@
             {% elif type == "paraphrase" %}
                 <i class="bi bi-arrow-repeat text-info fs-5"></i>
                 <span class="fw-bold">Перефраз</span>
+            {% elif type == "archive" %}
+                <i class="bi bi-archive text-secondary fs-5"></i>
+                <span class="fw-bold">Архив</span>
             {% endif %}
 
             {# Кнопки действий #}
-            {% if not item.is_published and not item.is_archived and not type == "draft" %}
+            {% if not item.is_published and not item.is_archived and type != "draft" %}
+                {# Кнопка опубликовать вопрос #}
                 <button type="button"
                         class="btn btn-sm btn-outline-success"
                         title="Опубликовать вопрос"
@@ -34,8 +38,10 @@
                         data-redirect-to="detail">
                     <i class="bi bi-check-circle"></i>
                 </button>
-            {% else %}
+            {% endif %}
 
+            {% if type == "draft" %}
+                {# Кнопка опубликовать черновик #}
                 <button type="button"
                         class="btn btn-sm btn-outline-success"
                         title="Опубликовать черновик"
@@ -49,7 +55,6 @@
                         data-question-text="{{ item.question|truncatechars:100 }}">
                     <i class="bi bi-check2-circle"></i>
                 </button>
-
             {% endif %}
 
             {% if item.is_published %}
@@ -66,6 +71,23 @@
                     <i class="bi bi-eye-slash"></i>
                 </button>
             {% endif %}
+
+            {% if type == "archive" %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Восстановить архивную версию"
+                        data-bs-toggle="modal"
+                        data-bs-target="#actionModal"
+                        data-action-url="{% url 'questions:archive_restore' parent_pk %}"
+                        data-action-title="Восстановить архивную версию"
+                        data-action-text="Текущая версия вопроса будет сохранена как черновик. Архивная версия станет основной. Необходим комментарий."
+                        data-btn-class="btn-secondary"
+                        data-btn-text="Восстановить"
+                        data-question-text="{{ item.question|truncatechars:100 }}">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+            {% endif %}
+
 
             {% if type == "question" and not item.drafts.exists %}
                 <form method="post" action="{% url 'questions:draft_create' item.pk %}" style="display:inline;">
@@ -90,32 +112,35 @@
             {% endif %}
 
             {# Кнопка удаления #}
-
-            {% if type == "draft" %}
-                <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            title="Удалить черновик"
-                            onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </form>
-            {% else %}
-                <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            title="Удалить вопрос"
-                            onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </form>
+            {% if type != "archive" %}
+                {% if type == "draft" %}
+                    <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                title="Удалить черновик"
+                                onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                title="Удалить вопрос"
+                                onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                {% endif %}
             {% endif %}
 
         </div>
 
         {# Бейджи статуса #}
         <div>
-            {% if item.is_published %}
+            {% if type == "archive" %}
+                <span class="badge bg-secondary">Архивный</span>
+            {% elif item.is_published %}
                 <span class="badge bg-success">Опубликован</span>
             {% else %}
                 <span class="badge bg-warning text-dark">Не опубликован</span>
@@ -125,6 +150,7 @@
             {% endif %}
         </div>
     </div>
+
 
     {# Тело карточки #}
     <div class="card-body">

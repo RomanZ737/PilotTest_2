@@ -26,6 +26,7 @@ class QuestionListView(ListView):
     def get_queryset(self):
         """Применяет фильтры и поиск к queryset."""
         queryset = super().get_queryset().select_related('theme')
+        queryset = queryset.filter(is_archived=False)
 
         # Поиск по тексту вопроса
         search = self.request.GET.get('search', '').strip()
@@ -491,8 +492,6 @@ class DraftPublishView(View):
         if original.previous_version:
             original.previous_version.delete()
 
-        # Старый вопрос → архив
-        original.previous_version = original  # сохраняем ссылку на себя как архивную версию
         # Создаём архивную копию старого вопроса
         archived = Question.objects.create(
             question=original.question,
@@ -509,6 +508,15 @@ class DraftPublishView(View):
             created_by=original.created_by,
         )
 
+        # Копируем старые ответы в архив
+        for answer in original.answers.all():
+            Answer.objects.create(
+                question=archived,
+                answer=answer.answer,
+                is_correct=answer.is_correct,
+                answer_order=answer.answer_order,
+            )
+
         # Переносим данные из черновика в оригинальный вопрос
         original.question = draft.question
         original.theme = draft.theme
@@ -516,17 +524,15 @@ class DraftPublishView(View):
         original.q_kind = draft.q_kind
         original.q_weight = draft.q_weight
         original.is_time_limited = draft.is_time_limited
-        if draft.question_img:
-            original.question_img = draft.question_img
-        if draft.comment_img:
-            original.comment_img = draft.comment_img
+        original.question_img = draft.question_img
+        original.comment_img = draft.comment_img
         original.comment_text = draft.comment_text
         original.is_published = True
         original.published_at = timezone.now()
         original.previous_version = archived
         original.save()
 
-        # Переносим ответы: удаляем старые, копируем из черновика
+        # Удаляем старые ответы оригинала и копируем из черновика
         original.answers.all().delete()
         for draft_answer in draft.answers.all():
             Answer.objects.create(
@@ -579,3 +585,92 @@ class DraftDeleteView(View):
         messages.success(request, 'Черновик удалён.')
         return redirect('questions:question_detail', pk=question_pk)
 
+
+class ArchiveRestoreView(View):
+    def post(self, request, pk):
+        question = get_object_or_404(Question, pk=pk)
+        archived = question.previous_version
+
+        # Сохраняем данные текущего вопроса для черновика
+        draft_question = question.question
+        draft_theme = question.theme
+        draft_ac_type = question.ac_type
+        draft_q_kind = question.q_kind
+        draft_q_weight = question.q_weight
+        draft_is_time_limited = question.is_time_limited
+        draft_question_img = question.question_img
+        draft_comment_img = question.comment_img
+        draft_comment_text = question.comment_text
+
+        # Переносим данные из архива в текущий вопрос
+        question.question = archived.question
+        question.theme = archived.theme
+        question.ac_type = archived.ac_type
+        question.q_kind = archived.q_kind
+        question.q_weight = archived.q_weight
+        question.is_time_limited = archived.is_time_limited
+        question.question_img = archived.question_img
+        question.comment_img = archived.comment_img
+        question.comment_text = archived.comment_text
+        question.is_published = False
+        question.published_at = None
+        question.previous_version = None
+        question.save()
+
+        # Создаём черновик из старых данных текущего вопроса
+        draft = QuestionDraft.objects.create(
+            original_question=question,
+            question=draft_question,
+            theme=draft_theme,
+            ac_type=draft_ac_type,
+            q_kind=draft_q_kind,
+            q_weight=draft_q_weight,
+            is_time_limited=draft_is_time_limited,
+            question_img=draft_question_img,
+            comment_img=draft_comment_img,
+            comment_text=draft_comment_text,
+            created_by=request.user,
+        )
+
+        # Переносим старые ответы в черновик, удаляем из вопроса
+        for answer in question.answers.all():
+            Answer.objects.create(
+                question_draft=draft,
+                answer=answer.answer,
+                is_correct=answer.is_correct,
+                answer_order=answer.answer_order,
+            )
+        question.answers.all().delete()
+
+        # Копируем ответы из архива в текущий вопрос
+        for archived_answer in archived.answers.all():
+            Answer.objects.create(
+                question=question,
+                answer=archived_answer.answer,
+                is_correct=archived_answer.is_correct,
+                answer_order=archived_answer.answer_order,
+            )
+
+        # Удаляем архивную версию
+        archived.delete()
+
+        # История
+        history = QuestionHistory.objects.create(
+            logical_question=question,
+            entity_type='question',
+            user=request.user,
+            user_name=request.user.get_full_name() or request.user.username,
+        )
+        Action.objects.create(history=history, action_type='restored')
+
+        comment_text = request.POST.get('comment', '').strip()
+        if comment_text:
+            Comment.objects.create(
+                history=history,
+                user=request.user,
+                user_name=request.user.get_full_name() or request.user.username,
+                text=comment_text,
+            )
+
+        messages.success(request, 'Архивная версия восстановлена. Текущая версия сохранена как черновик.')
+        return redirect('questions:question_detail', pk=question.pk)
