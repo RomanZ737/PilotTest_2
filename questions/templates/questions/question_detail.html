@@ -10,7 +10,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb align-items-center">
             <li class="breadcrumb-item">
-                <a href="{% url 'questions:question_list' %}" class="btn btn-outline-light btn-sm">
+                <a href="{{ back_url }}" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-arrow-left"></i>
                 </a>
             </li>
@@ -20,6 +20,7 @@
 
     {# Вкладки #}
     <ul class="nav nav-tabs mb-0" id="questionTabs" role="tablist">
+    {# Вкладка Вопрос #}
     <li class="nav-item" role="presentation">
         <button class="nav-link active tab-question-{{ question|get_border_color }}"
                 id="question-tab"
@@ -28,41 +29,53 @@
                 type="button"
                 role="tab">
             <i class="bi bi-question-circle"></i> Вопрос
+            {% if not question.is_published %}
+                <span class="ms-1 d-inline-block bg-warning rounded-circle" style="width: 8px; height: 8px;" title="Не опубликован"></span>
+            {% endif %}
+            {% if question.is_new %}
+                <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
+            {% endif %}
         </button>
-            </li>
+    </li>
+
+    {# Вкладка Черновик #}
     {% if draft %}
-        <li class="nav-item" role="presentation">
-            <button class="nav-link tab-draft"
-                    id="draft-tab"
-                    data-bs-toggle="tab"
-                    data-bs-target="#draft-pane"
-                    type="button"
-                    role="tab">
-                <i class="bi bi-pencil-square"></i> Черновик
-                {% if draft.is_new %}
-                    <span class="badge bg-warning text-dark ms-1" id="draft-new-badge">new</span>
-                {% endif %}
-            </button>
-        </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link tab-draft"
+                id="draft-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#draft-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-pencil-square"></i> Черновик
+            {% if draft.is_new %}
+                <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
+            {% endif %}
+        </button>
+    </li>
     {% endif %}
 
-
-
-    {% if paraphrases %}
-        <li class="nav-item" role="presentation">
-            <button class="nav-link tab-paraphrase"
-                    id="paraphrase-tab"
-                    data-bs-toggle="tab"
-                    data-bs-target="#paraphrase-pane"
-                    type="button"
-                    role="tab">
-                <i class="bi bi-arrow-repeat"></i> Перефраз
-                <span class="badge bg-info text-white">{{ paraphrases|length }}</span>
-            </button>
-        </li>
+    {# Вкладка Перефраз #}
+    {% if paraphrase %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link tab-paraphrase"
+                id="paraphrase-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#paraphrase-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-arrow-repeat"></i> Перефраз
+            {% if not paraphrase.is_published %}
+                <span class="ms-1 d-inline-block bg-warning rounded-circle" style="width: 8px; height: 8px;" title="Не опубликован"></span>
+            {% endif %}
+            {% if paraphrase.is_new %}
+                <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
+            {% endif %}
+        </button>
+    </li>
     {% endif %}
 
-
+    {# Вкладка Архив #}
     {% if question.previous_version %}
     <li class="nav-item" role="presentation">
         <button class="nav-link tab-archive"
@@ -74,9 +87,7 @@
             <i class="bi bi-archive"></i> Архив
         </button>
     </li>
-
-{% endif %}
-
+    {% endif %}
 </ul>
 
     {# Содержимое вкладок #}
@@ -85,9 +96,7 @@
         <div class="tab-pane fade show active" id="question-pane" role="tabpanel">
             <div class="row">
                 <div class="col-lg-9 pe-0">
-                    <div class="card border-top-0 rounded-top-0 border-{{ question|get_border_color }} border-3 shadow-sm">
-                        {% include "questions/includes/question_card.html" with item=question type="question" %}
-                    </div>
+                    {% include "questions/includes/question_card.html" with item=question type="question" %}
                 </div>
                 <div class="col-lg-3 ps-0">
                     <div class="card shadow-sm h-100">
@@ -136,9 +145,7 @@
             <div class="tab-pane fade" id="draft-pane" role="tabpanel">
                 <div class="row">
                     <div class="col-lg-9 pe-0">
-                        <div class="card border-top-0 rounded-top-0 border-dark border-3 shadow-sm">
-                            {% include "questions/includes/question_card.html" with item=draft type="draft" %}
-                        </div>
+                        {% include "questions/includes/question_card.html" with item=draft type="draft" %}
                     </div>
                     <div class="col-lg-3 ps-0">
                         <div class="card shadow-sm h-100">
@@ -169,13 +176,38 @@
 
 
         {# Вкладка Перефраз #}
-        {% if paraphrases %}
+        {% if paraphrase %}
             <div class="tab-pane fade" id="paraphrase-pane" role="tabpanel">
-                {% for paraphrase in paraphrases %}
-                    <div class="card border-info border-3 shadow-sm mb-3">
+                <div class="row">
+                    <div class="col-lg-9 pe-0">
                         {% include "questions/includes/question_card.html" with item=paraphrase type="paraphrase" %}
                     </div>
-                {% endfor %}
+                    <div class="col-lg-3 ps-0">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-light py-1">
+                                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-5">ID</dt>
+                                    <dd class="col-sm-7">{{ paraphrase.id }}</dd>
+                                    <dt class="col-sm-5">Создан</dt>
+                                    <dd class="col-sm-7">{{ paraphrase.created_at|date:"d.m.Y H:i" }}</dd>
+                                    <dt class="col-sm-5">Обновлён</dt>
+                                    <dd class="col-sm-7">{{ paraphrase.updated_at|date:"d.m.Y H:i" }}</dd>
+                                    <dt class="col-sm-5">Статус</dt>
+                                    <dd class="col-sm-7">
+                                        {% if paraphrase.is_published %}
+                                            <span class="badge bg-success">Опубликован</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Не опубликован</span>
+                                        {% endif %}
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         {% endif %}
 
@@ -184,9 +216,7 @@
     <div class="tab-pane fade" id="archive-pane" role="tabpanel">
         <div class="row">
             <div class="col-lg-9 pe-0">
-                <div class="card border-top-0 rounded-top-0 border-secondary border-3 shadow-sm">
-                    {% include "questions/includes/question_card.html" with item=question.previous_version type="archive" parent_pk=question.pk %}
-                </div>
+                {% include "questions/includes/question_card.html" with item=question.previous_version type="archive" parent_pk=question.pk %}
             </div>
             <div class="col-lg-3 ps-0">
                 <div class="card shadow-sm h-100">

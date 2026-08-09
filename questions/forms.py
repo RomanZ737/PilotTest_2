@@ -1,5 +1,5 @@
 from django import forms
-from .models import Question, Answer, Themes, QuestionDraft
+from .models import Question, Answer, Themes, QuestionDraft, QuestionParaphrase
 from django.forms import inlineformset_factory
 from django.forms import BaseInlineFormSet, ValidationError
 
@@ -175,3 +175,35 @@ DraftAnswerFormSetFactory = inlineformset_factory(
     max_num=10,
     can_delete=True,
 )
+
+
+class ParaphraseForm(forms.ModelForm):
+    """Форма для создания и редактирования перефраза."""
+
+    class Meta:
+        model = QuestionParaphrase
+        fields = [
+            'question',
+            'theme',
+            'ac_type',
+            'q_kind',
+            'q_weight',
+            'is_time_limited',
+        ]
+        widgets = {
+            'question': forms.Textarea(attrs={
+                'rows': 5,
+                'class': 'form-control',
+                'placeholder': 'Введите перефразированный текст вопроса...',
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Все поля кроме question делаем readonly
+        readonly_fields = ['theme', 'ac_type', 'q_kind', 'q_weight', 'is_time_limited']
+        for field_name in readonly_fields:
+            if field_name in self.fields:
+                self.fields[field_name].disabled = True
+                self.fields[field_name].required = False

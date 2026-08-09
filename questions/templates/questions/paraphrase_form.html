@@ -1,0 +1,144 @@
+{% extends "core/base.html" %}
+{% load django_bootstrap5 %}
+
+{% block title %}
+    {% if is_create %}Создание перефраза{% else %}Редактирование перефраза{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    {# Хлебные крошки #}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{% url 'questions:question_detail' original_question.pk %}?tab=paraphrase" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5">
+                {% if is_create %}Создание перефраза{% else %}Редактирование перефраза{% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    {# Основная форма #}
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        {# Карточка перефраза #}
+        <div class="card border-info border-3 shadow-sm mb-4">
+
+            {# Шапка #}
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-repeat text-info fs-5"></i>
+                    <span class="fw-bold">Перефраз</span>
+                </div>
+                <div>
+                    {% if is_create %}
+                        <span class="badge bg-warning text-dark">Не опубликован</span>
+                    {% elif form.instance.is_published %}
+                        <span class="badge bg-success">Опубликован</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Не опубликован</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card-body">
+
+                {# Текст перефраза #}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        {% bootstrap_field form.question %}
+                    </div>
+                </div>
+
+                {# Readonly-метаданные #}
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Тема вопроса</label>
+                        <input type="text" class="form-control" value="{{ original_question.theme.name }}" disabled>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Тип ВС</label>
+                        <input type="text" class="form-control" value="{{ original_question.get_ac_type_display }}" disabled>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Тип вопроса</label>
+                        <input type="text" class="form-control" value="{{ original_question.get_q_kind_display }}" disabled>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Вес вопроса</label>
+                        <input type="text" class="form-control" value="{{ original_question.q_weight }}" disabled>
+                    </div>
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" disabled
+                                   {% if original_question.is_time_limited %}checked{% endif %}>
+                            <label class="form-check-label">Ограничение по времени</label>
+                        </div>
+                    </div>
+                </div>
+
+                {# Блок ответов (readonly) #}
+                <div class="mt-4 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary bg-opacity-10 py-2">
+                            <h6 class="mb-0 fw-bold text-primary">
+                                <i class="bi bi-list-check me-2"></i>Варианты ответов
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="list-group list-group-flush">
+                                {% for answer in answers %}
+                                    <div class="list-group-item d-flex align-items-center gap-2
+                                                {% if answer.is_correct %}list-group-item-success border-success{% endif %}">
+                                        <span class="badge bg-secondary rounded-pill">{{ forloop.counter }}</span>
+                                        <span class="flex-grow-1">{{ answer.answer }}</span>
+                                        {% if answer.is_correct %}
+                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Комментарий #}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <label for="paraphraseComment" class="form-label">
+                            Комментарий
+                            {% if not is_create %}
+                                <span class="text-danger">*</span>
+                            {% endif %}
+                        </label>
+                        <textarea name="comment" id="paraphraseComment" class="form-control" rows="2"
+                            placeholder="{% if is_create %}Опишите причину создания перефраза...{% else %}Опишите, что изменилось...{% endif %}"></textarea>
+                    </div>
+                </div>
+
+            </div>  {# конец card-body #}
+        </div>  {# конец card #}
+
+        {# Кнопки действий #}
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'questions:question_detail' original_question.pk %}" class="btn btn-outline-light">
+                <i class="bi bi-x-circle"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-info">
+                <i class="bi bi-check-circle"></i>
+                {% if is_create %}Создать перефраз{% else %}Сохранить изменения{% endif %}
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}

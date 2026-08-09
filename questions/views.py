@@ -3,9 +3,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.views.generic import ListView, View, CreateView, UpdateView, DeleteView, DetailView
 from django.shortcuts import get_object_or_404, redirect
 from django.db.models import Prefetch
-from history.models import QuestionHistory, Comment, Action, DraftView
-from .forms import QuestionForm, AnswerFormSetFactory, ThemeForm, DraftForm, DraftAnswerFormSetFactory
-from .models import Question, Themes, Answer, QuestionDraft
+from history.models import QuestionHistory, Comment, Action, DraftView, TabView
+from .forms import QuestionForm, AnswerFormSetFactory, ThemeForm, DraftForm, DraftAnswerFormSetFactory, ParaphraseForm
+from .models import Question, Themes, Answer, QuestionDraft, QuestionParaphrase
 from core.enums import ACType
 from django.contrib import messages
 from django.utils import timezone
@@ -102,12 +102,33 @@ class QuestionDetailView(DetailView):
         if draft:
             context['draft'] = draft
             if self.request.user.is_authenticated:
-                context['draft'].is_new = not draft.views.filter(
-                    user=self.request.user
-                ).exists()
+                tab_view, created = TabView.objects.get_or_create(
+                    user=self.request.user,
+                    logical_question=question,
+                    tab_type='draft',
+                )
+                context['draft'].is_new = created  # True если только что создали запись
 
-        # Перефразировки
-        context['paraphrases'] = question.paraphrases.filter(is_published=True)
+        # Перефраз
+        paraphrase = question.paraphrases.first()
+        if paraphrase:
+            context['paraphrase'] = paraphrase
+            if self.request.user.is_authenticated:
+                tab_view, created = TabView.objects.get_or_create(
+                    user=self.request.user,
+                    logical_question=question,
+                    tab_type='paraphrase',
+                )
+                context['paraphrase'].is_new = created
+
+        # Основной вопрос — всегда фиксируем просмотр
+        if self.request.user.is_authenticated:
+            tab_view, created = TabView.objects.get_or_create(
+                user=self.request.user,
+                logical_question=question,
+                tab_type='question',
+            )
+            context['question'].is_new = created
 
         # История с фильтрацией и сортировкой
         history_qs = question.history.all()
@@ -141,6 +162,9 @@ class QuestionDetailView(DetailView):
             history__logical_question=question
         ).order_by('-created_at').first()
 
+        # Для возврата на отфильтрованный список в хлебных крошках
+        context['back_url'] = self.request.GET.get('back', reverse('questions:question_list'))
+
         return context
 
 
@@ -167,13 +191,28 @@ class QuestionPublishView(View):
         if question.is_published:
             question.is_published = False
             action_type = 'unpublished'
-            messages.warning(request, f'Вопрос снят с публикации и НЕ будет использован в тестах.')
+            messages.warning(request, f'Вопрос снят с публикации и НЕ будет использован в тестах. '
+                                      f'{"Перефраз снят с публикации" if question.paraphrases else ""}')
         else:
             question.is_published = True
             question.published_at = timezone.now()
             action_type = 'published'
             messages.success(request, f'Вопрос опубликован и будет использовать в тестах.')
         question.save()
+
+        # Если вопрос снимается с публикации — снимаем и перефраз
+        if action_type == 'unpublished':
+            for paraphrase in question.paraphrases.filter(is_published=True):
+                paraphrase.is_published = False
+                paraphrase.save()
+                # Запись в историю
+                ph_history = QuestionHistory.objects.create(
+                    logical_question=question,
+                    entity_type='paraphrase',
+                    user=request.user,
+                    user_name=request.user.get_full_name() or request.user.username,
+                )
+                Action.objects.create(history=ph_history, action_type='unpublished')
 
         # --- Запись в историю ---
         history = QuestionHistory.objects.create(
@@ -194,6 +233,11 @@ class QuestionPublishView(View):
             user_name=request.user.get_full_name() or request.user.username,
             text=comment_text,
         )
+
+        TabView.objects.filter(
+            logical_question=question,
+            tab_type='question',
+        ).exclude(user=request.user).delete()
 
         # Редирект в зависимости от источника
         redirect_to = request.POST.get('redirect_to', '')
@@ -251,6 +295,11 @@ class QuestionCreateView(CreateView):
         )
         Action.objects.create(history=history, action_type='created')
 
+        TabView.objects.filter(
+            logical_question=self.object,
+            tab_type='question',
+        ).exclude(user=self.request.user).delete()
+
         messages.success(self.request, f'Вопрос #{self.object.pk} успешно создан.')
         return redirect('questions:question_detail', pk=self.object.pk)
 
@@ -258,12 +307,14 @@ class QuestionCreateView(CreateView):
         context = self.get_context_data()
         return self.render_to_response(context)
 
+
 class QuestionDeleteView(View):
     def post(self, request, pk):
         question = get_object_or_404(Question, pk=pk)
         question.delete()
         messages.success(request, f'Вопрос #{pk} удалён.')
         return redirect('questions:question_list')
+
 
 class ThemesListView(ListView):
     model = Themes
@@ -287,7 +338,8 @@ class ThemesListView(ListView):
             params.pop('page')
         context['query_string'] = params.urlencode()
         return context
-    
+
+
 class ThemesDetailView(DetailView):
     model = Themes
     template_name = 'questions/theme_detail.html'
@@ -389,10 +441,17 @@ class DraftCreateView(View):
         )
         Action.objects.create(history=history, action_type='created')
 
-        DraftView.objects.create(
+        # Фиксируем просмотр для создателя
+        TabView.objects.get_or_create(
             user=request.user,
-            draft=draft,
+            logical_question=question,
+            tab_type='draft',
         )
+        # Сбрасываем просмотры для остальных
+        TabView.objects.filter(
+            logical_question=question,
+            tab_type='draft',
+        ).exclude(user=request.user).delete()
 
         messages.success(request, 'Черновик создан.')
         return redirect('questions:draft_edit', pk=draft.pk)
@@ -479,6 +538,12 @@ class DraftUpdateView(UpdateView):
         else:
             messages.info(self.request, 'Нет изменений для сохранения.')
 
+        # Сбрасываем просмотры при изменениях
+        TabView.objects.filter(
+            logical_question=self.object.original_question,
+            tab_type='draft',
+        ).exclude(user=self.request.user).delete()
+
         url = reverse('questions:question_detail', kwargs={'pk': self.object.original_question.pk})
         return redirect(f'{url}?tab=draft')
 
@@ -545,6 +610,20 @@ class DraftPublishView(View):
         # Удаляем черновик
         draft.delete()
 
+        # Снимаем перефраз с публикации
+        for paraphrase in original.paraphrases.filter(is_published=True):
+            paraphrase.is_published = False
+            paraphrase.save()
+            ph_history = QuestionHistory.objects.create(
+                logical_question=original,
+                entity_type='paraphrase',
+                user=request.user,
+                user_name=request.user.get_full_name() or request.user.username,
+            )
+            Action.objects.create(history=ph_history, action_type='unpublished')
+
+
+
         # Запись в историю
         history = QuestionHistory.objects.create(
             logical_question=original,
@@ -563,7 +642,13 @@ class DraftPublishView(View):
                 text=comment_text,
             )
 
-        messages.success(request, 'Черновик опубликован.')
+        TabView.objects.filter(
+            logical_question=original,
+            tab_type='question',
+        ).exclude(user=request.user).delete()
+
+        messages.success(request, f'Черновик опубликован.<br>'
+                                  f'{"Перефраз снят с публикации" if original.paraphrases else ""}')
         return redirect('questions:question_detail', pk=original.pk)
 
 
@@ -654,6 +739,20 @@ class ArchiveRestoreView(View):
         # Удаляем архивную версию
         archived.delete()
 
+        para_message = False # Флаг для сообщения о снятии перефраза с публикации
+        # Снимаем перефраз с публикации
+        for paraphrase in question.paraphrases.filter(is_published=True):
+            paraphrase.is_published = False
+            para_message = True
+            paraphrase.save()
+            ph_history = QuestionHistory.objects.create(
+                logical_question=question,
+                entity_type='paraphrase',
+                user=request.user,
+                user_name=request.user.get_full_name() or request.user.username,
+            )
+            Action.objects.create(history=ph_history, action_type='unpublished')
+
         # История
         history = QuestionHistory.objects.create(
             logical_question=question,
@@ -672,5 +771,196 @@ class ArchiveRestoreView(View):
                 text=comment_text,
             )
 
-        messages.success(request, 'Архивная версия восстановлена. Текущая версия сохранена как черновик.')
+        TabView.objects.filter(
+            logical_question=question,
+            tab_type='question',
+        ).exclude(user=request.user).delete()
+
+        messages.success(request, f'Архивная версия восстановлена.<br>Текущая версия сохранена как черновик.<br>'
+                                  f'{"Перефраз снят с публикации" if para_message else ""}')
         return redirect('questions:question_detail', pk=question.pk)
+
+
+class ParaphraseCreateView(CreateView):
+    """Создание перефраза для вопроса."""
+    model = QuestionParaphrase
+    form_class = ParaphraseForm
+    template_name = 'questions/paraphrase_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.original_question = get_object_or_404(Question, pk=self.kwargs['pk'])
+
+        # Проверка: перефраз уже существует
+        if self.original_question.paraphrases.exists():
+            messages.warning(request, 'Перефраз для этого вопроса уже существует.')
+            return redirect(
+                reverse('questions:question_detail', kwargs={'pk': self.original_question.pk})
+                + '?tab=paraphrase'
+            )
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['initial'] = {
+            'theme': self.original_question.theme,
+            'ac_type': self.original_question.ac_type,
+            'q_kind': self.original_question.q_kind,
+            'q_weight': self.original_question.q_weight,
+            'is_time_limited': self.original_question.is_time_limited,
+        }
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['original_question'] = self.original_question
+        context['answers'] = self.original_question.get_answers()
+        context['is_create'] = True
+        return context
+
+    def form_valid(self, form):
+        form.instance.original_question = self.original_question
+        form.instance.created_by = self.request.user
+        paraphrase = form.save()
+
+        # Запись в историю
+        history = QuestionHistory.objects.create(
+            logical_question=self.original_question,
+            entity_type='paraphrase',
+            user=self.request.user,
+            user_name=self.request.user.get_full_name() or self.request.user.username,
+        )
+        Action.objects.create(history=history, action_type='created')
+
+        messages.success(self.request, 'Перефраз успешно создан.')
+
+        TabView.objects.filter(
+            logical_question=self.original_question,
+            tab_type='paraphrase',
+        ).exclude(user=self.request.user).delete()
+
+        url = reverse('questions:question_detail', kwargs={'pk': self.original_question.pk})
+        return redirect(f'{url}?tab=paraphrase')
+
+
+class ParaphraseUpdateView(UpdateView):
+    """Редактирование перефраза (только текст вопроса)."""
+    model = QuestionParaphrase
+    form_class = ParaphraseForm
+    template_name = 'questions/paraphrase_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.paraphrase_obj = self.get_object()
+        self.original_question = self.paraphrase_obj.original_question
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['original_question'] = self.original_question
+        context['answers'] = self.original_question.get_answers()
+        context['is_create'] = False
+        return context
+
+    def form_valid(self, form):
+        comment_text = self.request.POST.get('comment', '').strip()
+
+        if not comment_text:
+            messages.warning(self.request, 'При сохранении изменений комментарий обязателен.')
+            context = self.get_context_data(form=form)
+            return self.render_to_response(context)
+
+        paraphrase = form.save()
+
+        # Запись в историю
+        history = QuestionHistory.objects.create(
+            logical_question=self.original_question,
+            entity_type='paraphrase',
+            user=self.request.user,
+            user_name=self.request.user.get_full_name() or self.request.user.username,
+        )
+        Action.objects.create(history=history, action_type='updated_field', field_name='question')
+        Comment.objects.create(
+            history=history,
+            user=self.request.user,
+            text=comment_text,
+            user_name=self.request.user.get_full_name() or self.request.user.username,
+        )
+
+        messages.success(self.request, 'Перефраз успешно обновлён.')
+
+        TabView.objects.filter(
+            logical_question=self.original_question,
+            tab_type='paraphrase',
+        ).exclude(user=self.request.user).delete()
+
+        url = reverse('questions:question_detail', kwargs={'pk': self.original_question.pk})
+        return redirect(f'{url}?tab=paraphrase')
+
+
+class ParaphraseDeleteView(DeleteView):
+    """Удаление перефраза."""
+    model = QuestionParaphrase
+
+    def get_success_url(self):
+        return reverse('questions:question_detail', kwargs={'pk': self.original_question.pk})
+
+    def form_valid(self, form):
+        self.original_question = self.object.original_question
+
+        # Запись в историю перед удалением
+        history = QuestionHistory.objects.create(
+            logical_question=self.original_question,
+            entity_type='paraphrase',
+            user=self.request.user,
+            user_name=self.request.user.get_full_name() or self.request.user.username,
+        )
+        Action.objects.create(history=history, action_type='deleted')
+
+        messages.success(self.request, 'Перефраз удалён.')
+        return super().form_valid(form)
+
+
+class ParaphrasePublishView(View):
+    """Публикация / снятие с публикации перефраза."""
+
+    def post(self, request, pk):
+        paraphrase = get_object_or_404(QuestionParaphrase, pk=pk)
+        comment_text = request.POST.get('comment', '').strip()
+
+        if not comment_text:
+            messages.error(request, 'Комментарий обязателен.')
+            return redirect(
+                reverse('questions:question_detail', kwargs={'pk': paraphrase.original_question.pk})
+                + '?tab=paraphrase'
+            )
+
+        if paraphrase.is_published:
+            paraphrase.is_published = False
+            action_type = 'unpublished'
+            msg = 'Перефраз снят с публикации.'
+        else:
+            paraphrase.is_published = True
+            action_type = 'published'
+            msg = 'Перефраз опубликован.'
+
+        paraphrase.save()
+
+        history = QuestionHistory.objects.create(
+            logical_question=paraphrase.original_question,
+            entity_type='paraphrase',
+            user=request.user,
+            user_name=request.user.get_full_name() or request.user.username,
+        )
+        Action.objects.create(history=history, action_type=action_type)
+        Comment.objects.create(
+            history=history,
+            user=request.user,
+            text=comment_text,
+            user_name=request.user.get_full_name() or request.user.username,
+        )
+
+        messages.success(request, msg)
+        return redirect(
+            reverse('questions:question_detail', kwargs={'pk': paraphrase.original_question.pk})
+            + '?tab=paraphrase'
+        )

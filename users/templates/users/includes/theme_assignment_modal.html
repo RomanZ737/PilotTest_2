@@ -1,0 +1,80 @@
+<div class="modal fade" id="themeModal" tabindex="-1" aria-labelledby="themeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="themeModalLabel">
+                    <i class="bi bi-collection"></i> Назначить темы
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="themeForm" method="post" action="{% url 'users:theme_update' pilot.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Пилот: <strong>{{ pilot.last_name }} {{ pilot.first_name }}</strong>
+                    </p>
+
+                    <div class="row" id="theme-list">
+                        {% for theme in all_themes %}
+                            <div class="col-md-6 mb-2">
+                                <div class="theme-item d-flex align-items-center gap-2 p-2 rounded">
+                                    <span class="badge select-theme-badge
+                                                 {% if theme.id in assigned_theme_ids %}bg-success{% else %}badge-outline{% endif %}"
+                                          role="button"
+                                          data-theme-id="{{ theme.id }}">
+                                        <i class="bi bi-check-lg"></i>
+                                    </span>
+                                    <span>{{ theme.name }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    {# Скрытые поля для отправки выбранных ID #}
+                    <div id="selected-themes-container"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('themeForm');
+        const container = document.getElementById('selected-themes-container');
+
+        function updateHiddenInputs() {
+            container.innerHTML = '';
+            const selected = document.querySelectorAll('.select-theme-badge.bg-success');
+            selected.forEach(function(badge) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'theme_ids';
+                input.value = badge.dataset.themeId;
+                container.appendChild(input);
+            });
+        }
+
+        document.querySelectorAll('.select-theme-badge').forEach(function(badge) {
+            badge.addEventListener('click', function() {
+                if (this.classList.contains('bg-success')) {
+                    this.classList.remove('bg-success');
+                    this.classList.add('badge-outline');
+                } else {
+                    this.classList.remove('badge-outline');
+                    this.classList.add('bg-success');
+                }
+                updateHiddenInputs();
+            });
+        });
+
+        // Инициализация скрытых полей
+        updateHiddenInputs();
+    });
+</script>

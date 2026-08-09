@@ -21,27 +21,81 @@
                 <span class="fw-bold">Архив</span>
             {% endif %}
 
-            {# Кнопки действий #}
-            {% if not item.is_published and not item.is_archived and type != "draft" %}
-                {# Кнопка опубликовать вопрос #}
-                <button type="button"
-                        class="btn btn-sm btn-outline-success"
-                        title="Опубликовать вопрос"
-                        data-bs-toggle="modal"
-                        data-bs-target="#actionModal"
-                        data-action-url="{% url 'questions:publish' item.pk %}"
-                        data-action-title="Опубликовать вопрос"
-                        data-action-text="Вы уверены, что хотите опубликовать этот вопрос? Необходим комментарий"
-                        data-btn-class="btn-success"
-                        data-btn-text="Опубликовать"
-                        data-question-text="{{ question.question|truncatechars:100 }}"
-                        data-redirect-to="detail">
-                    <i class="bi bi-check-circle"></i>
-                </button>
+            {# ============================================ #}
+            {# Кнопки для ОСНОВНОГО ВОПРОСА (type == "question") #}
+            {# ============================================ #}
+
+            {% if type == "question" %}
+
+                {# Опубликовать #}
+                {% if not item.is_published and not item.is_archived %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-success"
+                            title="Опубликовать вопрос"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal"
+                            data-action-url="{% url 'questions:publish' item.pk %}"
+                            data-action-title="Опубликовать вопрос"
+                            data-action-text="Вы уверены, что хотите опубликовать этот вопрос? Необходим комментарий"
+                            data-btn-class="btn-success"
+                            data-btn-text="Опубликовать"
+                            data-question-text="{{ item.question|truncatechars:100 }}"
+                            data-redirect-to="detail">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                {% endif %}
+
+                {# Снять с публикации #}
+                {% if item.is_published %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-warning"
+                            title="Снять с публикации"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal"
+                            data-action-url="{% url 'questions:publish' item.pk %}"
+                            data-action-title="Снять с публикации"
+                            data-action-text="Вы уверены, что хотите снять этот вопрос с публикации? Необходим комментарий"
+                            data-btn-class="btn-warning"
+                            data-btn-text="Снять с публикации"
+                            data-question-text="{{ item.question|truncatechars:100 }}">
+                        <i class="bi bi-eye-slash"></i>
+                    </button>
+                {% endif %}
+
+                {# Редактировать (создать черновик) #}
+                {% if not item.drafts.exists %}
+                    <form method="post" action="{% url 'questions:draft_create' item.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-dark" title="Редактировать вопрос (создать черновик)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </form>
+                {% endif %}
+
+                {# Создать перефраз #}
+                {% if not item.paraphrases.exists %}
+                    <a href="{% url 'questions:paraphrase_create' item.pk %}" class="btn btn-sm btn-outline-info" title="Создать перефраз">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </a>
+                {% endif %}
+
+                {# Удалить #}
+                <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Удалить вопрос"
+                            onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+
             {% endif %}
 
+            {# ============================================ #}
+            {# Кнопки для ЧЕРНОВИКА (type == "draft") #}
+            {# ============================================ #}
+
             {% if type == "draft" %}
-                {# Кнопка опубликовать черновик #}
                 <button type="button"
                         class="btn btn-sm btn-outline-success"
                         title="Опубликовать черновик"
@@ -55,22 +109,77 @@
                         data-question-text="{{ item.question|truncatechars:100 }}">
                     <i class="bi bi-check2-circle"></i>
                 </button>
+
+                <a href="{% url 'questions:draft_edit' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать черновик">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
+
+                <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Удалить черновик"
+                            onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
             {% endif %}
 
-            {% if item.is_published %}
-                <button type="button"
-                        class="btn btn-sm btn-outline-warning"
-                        title="Снять с публикации"
-                        data-bs-toggle="modal"
-                        data-bs-target="#actionModal"
-                        data-action-url="{% url 'questions:publish' item.pk %}"
-                        data-action-title="Снять с публикации"
-                        data-action-text="Вы уверены, что хотите снять этот вопрос с публикации? Необходим комментарий"
-                        data-btn-class="btn-warning"
-                        data-btn-text="Снять с публикации">
-                    <i class="bi bi-eye-slash"></i>
-                </button>
+            {# ============================================ #}
+            {# Кнопки для ПЕРЕФРАЗА (type == "paraphrase") #}
+            {# ============================================ #}
+
+            {% if type == "paraphrase" %}
+
+                {# Опубликовать / Снять с публикации #}
+                {% if item.is_published %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-warning"
+                            title="Снять перефраз с публикации"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal"
+                            data-action-url="{% url 'questions:paraphrase_publish' item.pk %}"
+                            data-action-title="Снять перефраз с публикации"
+                            data-action-text="Вы уверены, что хотите снять перефраз с публикации? Необходим комментарий."
+                            data-btn-class="btn-warning"
+                            data-btn-text="Снять с публикации"
+                            data-question-text="{{ item.question|truncatechars:100 }}">
+                        <i class="bi bi-eye-slash"></i>
+                    </button>
+                {% else %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-success"
+                            title="Опубликовать перефраз"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal"
+                            data-action-url="{% url 'questions:paraphrase_publish' item.pk %}"
+                            data-action-title="Опубликовать перефраз"
+                            data-action-text="Вы уверены, что хотите опубликовать перефраз? Необходим комментарий."
+                            data-btn-class="btn-success"
+                            data-btn-text="Опубликовать"
+                            data-question-text="{{ item.question|truncatechars:100 }}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                {% endif %}
+
+                {# Редактировать #}
+                <a href="{% url 'questions:paraphrase_update' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать перефраз">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
+
+                {# Удалить #}
+                <form method="post" action="{% url 'questions:paraphrase_delete' item.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Удалить перефраз"
+                            onclick="return confirm('Удалить перефраз?\n\nЭто действие необратимо.')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
             {% endif %}
+
+            {# ============================================ #}
+            {# Кнопки для АРХИВА (type == "archive") #}
+            {# ============================================ #}
 
             {% if type == "archive" %}
                 <button type="button"
@@ -88,52 +197,6 @@
                 </button>
             {% endif %}
 
-
-            {% if type == "question" and not item.drafts.exists %}
-                <form method="post" action="{% url 'questions:draft_create' item.pk %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-dark" title="Редактировать вопрос (создать черновик)">
-                    <i class="bi bi-pencil"></i>
-                </button>
-            </form>
-            {% endif %}
-
-            {% if type == "draft" %}
-                <a href="{% url 'questions:draft_edit' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать черновик">
-                    <i class="bi bi-pencil-square"></i>
-                </a>
-
-            {% endif %}
-
-            {% if type == "question" %}
-                <a href="#" class="btn btn-sm btn-outline-info" title="Создать перефраз">
-                    <i class="bi bi-arrow-repeat"></i>
-                </a>
-            {% endif %}
-
-            {# Кнопка удаления #}
-            {% if type != "archive" %}
-                {% if type == "draft" %}
-                    <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                title="Удалить черновик"
-                                onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
-                {% else %}
-                    <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                title="Удалить вопрос"
-                                onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
-                {% endif %}
-            {% endif %}
-
         </div>
 
         {# Бейджи статуса #}
@@ -145,9 +208,7 @@
             {% else %}
                 <span class="badge bg-warning text-dark">Не опубликован</span>
             {% endif %}
-            {% if type == "paraphrase" %}
-                <span class="badge bg-info text-white">Использований: {{ item.usage_count }}</span>
-            {% endif %}
+
         </div>
     </div>
 
@@ -156,66 +217,121 @@
     <div class="card-body">
         <h5 class="card-title fw-bold">{{ item.question }}</h5>
 
-        {# Изображения комментария к ответу#}
-        {% if item.question_img %}
-            <div class="mt-3">
-                <div class="row justify-content-center">
-                    <div class="col-12 text-center">
-                        <img src="{{ item.question_img.url }}"
-                             alt="Пояснительное изображение"
-                             class="img-fluid rounded img-zoomable"
-                             style="max-width: 80%; max-height: 400px; object-fit: contain;"
-                             onclick="this.classList.toggle('zoomed')">
+        {# Изображение к вопросу #}
+        {% if type == "paraphrase" %}
+            {# Для перефраза — берём изображение из оригинального вопроса #}
+            {% if item.original_question.question_img %}
+                <div class="mt-3">
+                    <div class="row justify-content-center">
+                        <div class="col-12 text-center">
+                            <img src="{{ item.original_question.question_img.url }}"
+                                 alt="Пояснительное изображение"
+                                 class="img-fluid rounded img-zoomable"
+                                 style="max-width: 80%; max-height: 400px; object-fit: contain;"
+                                 onclick="this.classList.toggle('zoomed')">
+                        </div>
                     </div>
                 </div>
-            </div>
+            {% endif %}
+        {% else %}
+            {% if item.question_img %}
+                <div class="mt-3">
+                    <div class="row justify-content-center">
+                        <div class="col-12 text-center">
+                            <img src="{{ item.question_img.url }}"
+                                 alt="Пояснительное изображение"
+                                 class="img-fluid rounded img-zoomable"
+                                 style="max-width: 80%; max-height: 400px; object-fit: contain;"
+                                 onclick="this.classList.toggle('zoomed')">
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         {% endif %}
 
         {# Варианты ответов #}
         <div class="mt-5 mb-5">
-    <div class="card border-primary">
-        <div class="card-header bg-primary bg-opacity-10 py-2">
-            <h6 class="mb-0 fw-bold text-primary">
-                <i class="bi bi-list-check me-2"></i>Варианты ответов
-            </h6>
-        </div>
-        <div class="card-body p-2">
-            <div class="list-group list-group-flush">
-                {% for answer in item.get_answers %}
-                    <div class="list-group-item d-flex align-items-center gap-2 {% if answer.is_correct %}list-group-item-success border-success{% endif %}">
-                        <span class="badge bg-secondary rounded-pill">{{ forloop.counter }}</span>
-                        <span class="flex-grow-1">{{ answer.answer }}</span>
-                        {% if answer.is_correct %}
-                            <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+            <div class="card border-primary">
+                <div class="card-header bg-primary bg-opacity-10 py-2">
+                    <h6 class="mb-0 fw-bold text-primary">
+                        <i class="bi bi-list-check me-2"></i>Варианты ответов
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="list-group list-group-flush">
+                        {% if type == "paraphrase" %}
+                            {# Для перефраза — ответы из оригинального вопроса #}
+                            {% for answer in item.original_question.get_answers %}
+                                <div class="list-group-item d-flex align-items-center gap-2 {% if answer.is_correct %}list-group-item-success border-success{% endif %}">
+                                    <span class="badge bg-secondary rounded-pill">{{ forloop.counter }}</span>
+                                    <span class="flex-grow-1">{{ answer.answer }}</span>
+                                    {% if answer.is_correct %}
+                                        <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            {% for answer in item.get_answers %}
+                                <div class="list-group-item d-flex align-items-center gap-2 {% if answer.is_correct %}list-group-item-success border-success{% endif %}">
+                                    <span class="badge bg-secondary rounded-pill">{{ forloop.counter }}</span>
+                                    <span class="flex-grow-1">{{ answer.answer }}</span>
+                                    {% if answer.is_correct %}
+                                        <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
                         {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</div>
-
-        {# Пояснение #}
-        {% if item.comment_text %}
-            <div class="mt-3">
-                <h6 class="text-muted">Пояснение:</h6>
-                <p class="card-text">{{ item.comment_text|safe_html }}</p>
-            </div>
-        {% endif %}
-
-        {# Изображения комментария к ответу#}
-        {% if item.comment_img %}
-            <div class="mt-3">
-                <div class="row justify-content-center">
-                    <div class="col-12 text-center">
-                        <img src="{{ item.comment_img.url }}"
-                             alt="Пояснительное изображение"
-                             class="img-fluid rounded img-zoomable"
-                             style="max-width: 80%; max-height: 400px; object-fit: contain;"
-                             onclick="this.classList.toggle('zoomed')">
                     </div>
                 </div>
             </div>
+        </div>
+
+        {# Пояснение #}
+        {% if type == "paraphrase" %}
+            {% if item.original_question.comment_text %}
+                <div class="mt-3">
+                    <h6 class="text-muted">Пояснение:</h6>
+                    <p class="card-text">{{ item.original_question.comment_text|safe_html }}</p>
+                </div>
+            {% endif %}
+        {% else %}
+            {% if item.comment_text %}
+                <div class="mt-3">
+                    <h6 class="text-muted">Пояснение:</h6>
+                    <p class="card-text">{{ item.comment_text|safe_html }}</p>
+                </div>
+            {% endif %}
+        {% endif %}
+
+        {# Изображение к пояснению #}
+        {% if type == "paraphrase" %}
+            {% if item.original_question.comment_img %}
+                <div class="mt-3">
+                    <div class="row justify-content-center">
+                        <div class="col-12 text-center">
+                            <img src="{{ item.original_question.comment_img.url }}"
+                                 alt="Пояснительное изображение"
+                                 class="img-fluid rounded img-zoomable"
+                                 style="max-width: 80%; max-height: 400px; object-fit: contain;"
+                                 onclick="this.classList.toggle('zoomed')">
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            {% if item.comment_img %}
+                <div class="mt-3">
+                    <div class="row justify-content-center">
+                        <div class="col-12 text-center">
+                            <img src="{{ item.comment_img.url }}"
+                                 alt="Пояснительное изображение"
+                                 class="img-fluid rounded img-zoomable"
+                                 style="max-width: 80%; max-height: 400px; object-fit: contain;"
+                                 onclick="this.classList.toggle('zoomed')">
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>

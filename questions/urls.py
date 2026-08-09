@@ -12,7 +12,13 @@ from .views import (
     QuestionDeleteView,
     DraftUpdateView,
     DraftCreateView,
-    DraftPublishView, DraftDeleteView, ArchiveRestoreView,
+    DraftPublishView,
+    DraftDeleteView,
+    ArchiveRestoreView,
+    ParaphraseCreateView,
+    ParaphraseUpdateView,
+    ParaphraseDeleteView,
+    ParaphrasePublishView
 )
 from .apps import QuestionsConfig
 
@@ -35,4 +41,8 @@ urlpatterns = [
     path('draft/<int:pk>/publish/', DraftPublishView.as_view(), name='draft_publish'),
     path('draft/<int:pk>/delete/', DraftDeleteView.as_view(), name='draft_delete'),
     path('question/<int:pk>/restore/', ArchiveRestoreView.as_view(), name='archive_restore'),
+    path('paraphrase/<int:pk>/create/', ParaphraseCreateView.as_view(), name='paraphrase_create'),
+    path('paraphrase/<int:pk>/update/', ParaphraseUpdateView.as_view(), name='paraphrase_update'),
+    path('paraphrase/<int:pk>/delete/', ParaphraseDeleteView.as_view(), name='paraphrase_delete'),
+    path('paraphrase/<int:pk>/publish/', ParaphrasePublishView.as_view(), name='paraphrase_publish'),
 ]

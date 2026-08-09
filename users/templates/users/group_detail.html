@@ -1,0 +1,142 @@
+{% extends "core/base.html" %}
+
+{% block title %}Группа: {{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{{ back_url }}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5">{{ group.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-9 pe-0">
+            <div class="card border-top-0 rounded-top-0 border-primary border-3 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-people-fill text-primary fs-5"></i>
+                        <span class="fw-bold">Группа</span>
+
+                        <a href="{% url 'users:group_edit' group.pk %}?back={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+
+                        <form method="post" action="{% url 'users:group_delete' group.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    title="Удалить"
+                                    {% if is_fixed and not user.is_superuser %}disabled{% endif %}
+                                    onclick="return confirm('Удалить группу «{{ group.name }}»?');">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div>
+                        {% if is_fixed %}
+                            <span class="badge bg-warning text-dark">Фиксированная</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <p>{{ description }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 ps-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light py-1">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                </div>
+                <div class="card-body py-2">
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">ID</dt>
+                        <dd class="col-sm-7">{{ group.id }}</dd>
+
+                        <dt class="col-sm-5">Пилотов</dt>
+                        <dd class="col-sm-7">{{ pilots|length }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Список пилотов #}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-people"></i> Пилоты в группе ({{ pilots|length }})</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Пилот</th>
+                                    <th>Email</th>
+                                    <th>Должность</th>
+                                    <th>Тип ВС</th>
+                                    <th>Статус</th>
+                                    <th style="width: 10%;">Действия</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pilot in pilots %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'users:detail' pilot.pk %}?back={{ request.get_full_path|urlencode }}" class="text-decoration-none fw-semibold">
+                                                {{ pilot.last_name }} {{ pilot.first_name }}
+                                                {% if pilot.middle_name %}{{ pilot.middle_name }}{% endif %}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="mailto:{{ pilot.email }}" class="text-muted small text-decoration-none">
+                                                {{ pilot.email }}
+                                            </a>
+                                        </td>
+                                        <td>{{ pilot.get_position_display|default:"—" }}</td>
+                                        <td>{{ pilot.get_ac_type_display|default:"—" }}</td>
+                                        <td>
+                                            {% if pilot.is_active %}
+                                                <span class="badge bg-success">Активен</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Заблокирован</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <form method="post" action="{% url 'users:group_remove_user' group.pk pilot.pk %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        title="Удалить из группы"
+                                                        onclick="return confirm('Удалить пилота {{ pilot.last_name }} {{ pilot.first_name }} из группы «{{ group.name }}»?');">
+                                                    <i class="bi bi-person-dash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            В группе нет пилотов.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

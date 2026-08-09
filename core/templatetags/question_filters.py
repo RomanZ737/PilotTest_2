@@ -6,6 +6,10 @@ register = template.Library()
 @register.filter
 def get_border_color(item):
     """Возвращает цвет рамки в зависимости от статуса вопроса."""
+    # Перефраз
+    if hasattr(item, 'original_question') and hasattr(item, 'usage_count'):
+        return 'info'
+
     # Черновик
     if hasattr(item, 'original_question'):
         return 'dark'
@@ -18,8 +22,7 @@ def get_border_color(item):
             return 'success'
         return 'warning'
 
-    # Перефраз
-    return 'info'
+    return 'dark'
 
 
 @register.filter

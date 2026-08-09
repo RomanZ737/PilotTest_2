@@ -93,7 +93,7 @@
                             <tr>
                                 <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                                 <td>
-                                    <a href="{% url 'questions:question_detail' question.pk %}" class="text-decoration-none text-dark">
+                                    <a href="{% url 'questions:question_detail' question.pk %}?back={{ request.get_full_path|urlencode }}" class="text-decoration-none text-dark fw-semibold">
                                         {{ question.question|truncatechars:80 }}
                                     </a>
                                 </td>

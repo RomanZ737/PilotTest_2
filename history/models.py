@@ -150,3 +150,42 @@ class Comment(models.Model):
     def __str__(self):
         name = self.user.get_full_name() if self.user else (self.user_name or 'Удалён')
         return f'{name}: {self.text[:50]}...'
+
+
+class TabView(models.Model):
+    """Фиксирует просмотр вкладки пользователем."""
+
+    TAB_TYPES = [
+        ('question', 'Вопрос'),
+        ('draft', 'Черновик'),
+        ('paraphrase', 'Перефраз'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='tab_views'
+    )
+    logical_question = models.ForeignKey(
+        'questions.Question',
+        on_delete=models.CASCADE,
+        related_name='tab_views'
+    )
+    tab_type = models.CharField(
+        max_length=20,
+        choices=TAB_TYPES,
+        verbose_name='Тип вкладки'
+    )
+    viewed_at = models.DateTimeField(auto_now=True, verbose_name='Дата просмотра')
+
+    class Meta:
+        unique_together = ['user', 'logical_question', 'tab_type']
+        verbose_name = "Просмотр вкладки"
+        verbose_name_plural = "Просмотры вкладок"
+        indexes = [
+            models.Index(fields=['user', 'viewed_at']),
+            models.Index(fields=['logical_question', 'tab_type']),
+        ]
+
+    def __str__(self):
+        return f'{self.user} → {self.logical_question} [{self.get_tab_type_display()}]'

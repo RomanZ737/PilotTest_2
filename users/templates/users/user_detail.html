@@ -1,0 +1,203 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Пилот: {{ pilot.last_name }} {{ pilot.first_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    {# Хлебные крошки #}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{{ back_url }}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5" aria-current="page">
+                {{ pilot.last_name }} {{ pilot.first_name }}
+                {% if pilot.middle_name %}{{ pilot.middle_name }}{% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        {# Основная карточка #}
+        <div class="col-lg-9 pe-0">
+            <div class="card border-top-0 rounded-top-0 border-primary border-3 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-badge text-primary fs-5"></i>
+                        <span class="fw-bold">Пилот</span>
+
+                        {# Кнопки действий #}
+                        {% if user == pilot or perms.users.change_customuser %}
+                            <a href="{% url 'users:edit' pilot.pk %}?back={{ back_url|urlencode }}"
+                               class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        {% endif %}
+
+                        {% if user == pilot or perms.users.change_customuser %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-warning"
+                                    title="Сменить пароль"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#passwordModal">
+                                <i class="bi bi-key"></i>
+                            </button>
+                        {% endif %}
+
+                        {% if perms.users.can_deactivate_user and pilot != user %}
+                            <form method="post" action="{% url 'users:deactivate' pilot.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                {% if pilot.is_active %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            title="Заблокировать"
+                                            onclick="return confirm('Заблокировать пилота {{ pilot.email }}?');">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success"
+                                            title="Разблокировать"
+                                            onclick="return confirm('Разблокировать пилота {{ pilot.email }}?');">
+                                        <i class="bi bi-unlock-fill"></i>
+                                    </button>
+                                {% endif %}
+                            </form>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {% if pilot.is_active %}
+                            <span class="badge bg-success">Активен</span>
+                        {% else %}
+                            <span class="badge bg-danger">Заблокирован</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Фамилия</dt>
+                                <dd class="col-sm-8">{{ pilot.last_name }}</dd>
+
+                                <dt class="col-sm-4">Имя</dt>
+                                <dd class="col-sm-8">{{ pilot.first_name }}</dd>
+
+                                {% if pilot.middle_name %}
+                                <dt class="col-sm-4">Отчество</dt>
+                                <dd class="col-sm-8">{{ pilot.middle_name }}</dd>
+                                {% endif %}
+
+                                <dt class="col-sm-4">Email</dt>
+                                <dd class="col-sm-8">
+                                    <a href="mailto:{{ pilot.email }}" class="text-decoration-none">
+                                        {{ pilot.email }}
+                                    </a>
+                                </dd>
+
+                                {% if pilot.phone_number %}
+                                <dt class="col-sm-4">Телефон</dt>
+                                <dd class="col-sm-8">{{ pilot.phone_number }}</dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Должность</dt>
+                                <dd class="col-sm-8">{{ pilot.get_position_display|default:"—" }}</dd>
+
+                                <dt class="col-sm-4">Тип ВС</dt>
+                                <dd class="col-sm-8">{{ pilot.get_ac_type_display|default:"—" }}</dd>
+
+                                <dt class="col-sm-4">Группы</dt>
+                                <dd class="col-sm-8">
+                                    {% for group in pilot.groups.all %}
+                                        <span class="badge bg-secondary">{{ group.name }}</span>
+                                    {% empty %}
+                                        <span class="text-muted">—</span>
+                                    {% endfor %}
+                                </dd>
+
+                                {% if is_editor %}
+                                    <dt class="col-sm-4">Темы</dt>
+                                    <dd class="col-sm-8">
+                                        {% for ut in assigned_themes %}
+                                            <span class="badge bg-info text-white">{{ ut.theme.name }}</span>
+                                        {% empty %}
+                                            <span class="text-muted">Не назначены</span>
+                                        {% endfor %}
+                                        {% if user.is_superuser %}
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-info ms-2"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#themeModal"
+                                                    title="Назначить темы">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        {% endif %}
+                                    </dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Сайдбар #}
+        <div class="col-lg-3 ps-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light py-1">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                </div>
+                <div class="card-body py-2">
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-7">ID</dt>
+                        <dd class="col-sm-5">{{ pilot.id }}</dd>
+
+                        <dt class="col-sm-7">Логин</dt>
+                        <dd class="col-sm-5">{{ pilot.username }}</dd>
+
+                        <dt class="col-sm-7">Зарегистрирован</dt>
+                        <dd class="col-sm-4">{{ pilot.date_joined|date:"d.m.Y" }}</dd>
+
+                        <dt class="col-sm-7">Последний вход</dt>
+                        <dd class="col-sm-4">
+                            {% if pilot.last_login %}
+                                {{ pilot.last_login|date:"d.m.Y" }}
+                            {% else %}
+                                Никогда
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    {# Статистика #}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Статистика</h5>
+                </div>
+                <div class="card-body text-center py-4">
+                    <p class="text-muted mb-0">Нет данных</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Модальное окно #}
+{% include 'users/includes/password_modal.html' %}
+{% if is_editor and user.is_superuser %}
+    {% include 'users/includes/theme_assignment_modal.html' %}
+{% endif %}
+{% endblock %}

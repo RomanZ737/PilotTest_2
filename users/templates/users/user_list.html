@@ -1,68 +1,290 @@
 {% extends "core/base.html" %}
+{% load static %}
 
-{% block title %}Управление пользователями{% endblock %}
+{% block title %}Пилоты{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>👥 Пользователи сервиса</h1>
+
+    {# Заголовок и навигация #}
+    {% include 'users/includes/sub_header.html'%}
+
+    {# Фильтры #}
+    <div class="card shadow-sm bg-gray-170 rounded-3 border-0 mb-2">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                {# Поиск #}
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <input type="text" name="search" id="search" class="form-control"
+                               placeholder="ФИО или email..." value="{{ current_search }}">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {# Группа #}
+                <div class="col-md-2">
+                    <label for="group" class="form-label">Группа</label>
+                    <select name="group" id="group" class="form-select">
+                        <option value="">Все</option>
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" {% if current_group == group.id|stringformat:"s" %}selected{% endif %}>
+                                {{ group.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Тип ВС #}
+                <div class="col-md-2">
+                    <label for="ac_type" class="form-label">Тип ВС</label>
+                    <select name="ac_type" id="ac_type" class="form-select">
+                        <option value="">Все</option>
+                        {% for value, label in ac_type_choices %}
+                            <option value="{{ value }}" {% if current_ac_type == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Должность #}
+                <div class="col-md-2">
+                    <label for="position" class="form-label">Должность</label>
+                    <select name="position" id="position" class="form-select">
+                        <option value="">Все</option>
+                        {% for value, label in position_choices %}
+                            <option value="{{ value }}" {% if current_position == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Статус #}
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Статус</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">Все</option>
+                        <option value="active" {% if current_status == 'active' %}selected{% endif %}>Активен</option>
+                        <option value="blocked" {% if current_status == 'blocked' %}selected{% endif %}>Заблокирован</option>
+                    </select>
+                </div>
+
+                {# Кнопки #}
+                <div class="col-md-1 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i>
+                    </button>
+                    <a href="{% url 'users:list' %}" class="btn btn-outline-secondary w-100" title="Сбросить фильтры">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 
-    {% if users %}
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>Email</th>
-                        <th>Имя пользователя</th>
-                        <th>Статус</th>
-                        <th>Дата регистрации</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
+    {# Таблица #}
+    <div class="card shadow-sm rounded-3 border-0 bg-gray-200">
+        <div class="card-body p-0">
+            <div class="table-responsive rounded-3 border-0">
+                <table class="table table-hover align-middle mb-0 bg-transparent" id="pilots-table">
+                    <thead class="bg-gray-170" style="--bs-table-bg: transparent;">
                         <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.username }}</td>
-                            <td>
-                                {% if user.is_active %}
-                                    <span class="badge bg-success">Активен</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Заблокирован</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ user.date_joined|date:"d.m.Y H:i" }}</td>
-                            <td>
-                                {% if user.is_active and user != request.user and not user.is_superuser %}
-                                    <form method="post" action="{% url 'users:deactivate' user.pk %}" style="display:inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('Вы уверены, что хотите заблокировать пользователя {{ user.email }}?');">
-                                            <i class="bi bi-lock"></i> Заблокировать
-                                        </button>
-                                    </form>
-                                {% elif not user.is_active %}
-                                    <form method="post" action="{% url 'users:deactivate' user.pk %}" style="display:inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-success"
-                                                onclick="return confirm('Вы уверены, что хотите разблокировать пользователя {{ user.email }}?');">
-                                            <i class="bi bi-unlock"></i> Разблокировать
-                                        </button>
-                                    </form>
-                                {% endif %}
-                            </td>
+                            <th scope="col" style="width: 40px;">
+                                <span class="badge badge-outline select-all-badge"
+                                      role="button"
+                                      title="Выбрать всех на странице">
+                                    <i class="bi bi-check-lg"></i>
+                                </span>
+                            </th>
+                            <th scope="col" style="width: 25%;">Пилот</th>
+                            <th scope="col" style="width: 15%;">Группа</th>
+                            <th scope="col" style="width: 15%;">Тип ВС</th>
+                            <th scope="col" style="width: 10%;">Тесты</th>
+                            <th scope="col" style="width: 15%;">Последний вход</th>
+                            <th scope="col" style="width: 10%;">Статус</th>
+                            <th scope="col" style="width: 10%;" class="text-end">Действия</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-gray-200" style="--bs-table-bg: transparent;">
+                        {% for pilot in users %}
+                            <tr class="pilot-row" data-pilot-id="{{ pilot.id }}">
+                                {# Бейдж выбора #}
+                                <td>
+                                    <span class="badge select-badge badge-outline"
+                                          role="button"
+                                          title="Выбрать пилота"
+                                          data-pilot-id="{{ pilot.id }}">
+                                        <i class="bi bi-check-lg"></i>
+                                    </span>
+                                </td>
+
+                                {# ФИО + email #}
+                                <td>
+                                    <a href="{% url 'users:detail' pilot.pk %}?back={{ request.get_full_path|urlencode }}"
+                                       class="text-decoration-none text-dark fw-semibold">
+                                        {{ pilot.last_name|title }} {{ pilot.first_name|title }}
+                                        {% if pilot.middle_name %}{{ pilot.middle_name|title }}{% endif %}
+                                    </a>
+                                    <br>
+                                    <a href="mailto:{{ pilot.email }}" class="text-muted small text-decoration-none">
+                                        {{ pilot.email }}
+                                    </a>
+                                </td>
+
+                                {# Группа #}
+                                <td>
+                                    {% with pilot.groups.first as group %}
+                                        {% if group %}
+                                            <span class="badge bg-secondary">{{ group.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+
+                                {# Тип ВС #}
+                                <td>{{ pilot.get_ac_type_display|default:"—" }}</td>
+
+                                {# Тесты #}
+                                <td><span class="text-muted">—</span></td>
+
+                                {# Последний вход #}
+                                <td class="small text-muted">
+                                    {% if pilot.last_login %}
+                                        {{ pilot.last_login|date:"d.m.Y H:i" }}
+                                    {% else %}
+                                        Никогда
+                                    {% endif %}
+                                </td>
+
+                                {# Статус #}
+                                <td>
+                                    {% if pilot.is_active %}
+                                        <span class="badge bg-success">Активен</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Заблокирован</span>
+                                    {% endif %}
+                                </td>
+
+                                {# Действия #}
+                                <td class="text-end">
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <a href="{% url 'users:edit' pilot.pk %}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% if pilot.is_active and pilot != request.user %}
+                                            <form method="post" action="{% url 'users:deactivate' pilot.pk %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        title="Заблокировать"
+                                                        onclick="return confirm('Заблокировать пилота {{ pilot.email }}?');">
+                                                    <i class="bi bi-lock"></i>
+                                                </button>
+                                            </form>
+                                        {% elif not pilot.is_active %}
+                                            <form method="post" action="{% url 'users:deactivate' pilot.pk %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-success"
+                                                        title="Разблокировать"
+                                                        onclick="return confirm('Разблокировать пилота {{ pilot.email }}?');">
+                                                    <i class="bi bi-unlock"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    Пилоты не найдены. Попробуйте изменить параметры фильтрации.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    {% else %}
-        <div class="text-center py-5">
-            <p class="text-muted">Нет пользователей.</p>
-        </div>
-    {% endif %}
+
+        {# Пагинация #}
+        {% if page_obj.has_other_pages %}
+            <div class="card-footer d-flex justify-content-between align-items-center py-3 bg-gray-170">
+                <div class="text-muted small">
+                    Показано {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ page_obj.paginator.count }}
+                </div>
+                <nav aria-label="Навигация по страницам">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link bg-transparent border-0" href="?page=1&{{ query_string }}">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link bg-transparent border-0" href="?page={{ page_obj.previous_page_number }}&{{ query_string }}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-double-left"></i></span></li>
+                            <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-left"></i></span></li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active" aria-current="page"><span class="page-link bg-transparent border-0">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link bg-transparent border-0" href="?page={{ num }}&{{ query_string }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link bg-transparent border-0" href="?page={{ page_obj.next_page_number }}&{{ query_string }}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link bg-transparent border-0" href="?page={{ page_obj.paginator.num_pages }}&{{ query_string }}">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-right"></i></span></li>
+                            <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-double-right"></i></span></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        {% endif %}
+    </div>
 </div>
+
+{# Панель действий с выбранными #}
+<div id="selection-panel" class="fixed-bottom bg-dark text-white p-3 d-none">
+    <div class="container d-flex justify-content-between align-items-center">
+        <span>Выбрано: <strong id="selection-count">0</strong> пилотов</span>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light" disabled>
+                <i class="bi bi-clipboard-check"></i> Назначить тест
+            </button>
+            <button class="btn btn-sm btn-outline-light" disabled>
+                <i class="bi bi-plus-circle"></i> Добавить в группу
+            </button>
+            <button class="btn btn-sm btn-outline-danger" id="clear-selection">
+                <i class="bi bi-x-circle"></i> Снять выделение
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/pilot_list.js' %}"></script>
 {% endblock %}

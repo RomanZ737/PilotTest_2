@@ -1,8 +1,8 @@
 {% load user_tags %}
 
-<div class="border-bottom box-shadow p-3 px-md-4 mb-3 " >
+<div class="border-bottom box-shadow p-3 px-md-4 mb-3">
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between ">
+    <div class="d-flex flex-wrap align-items-center justify-content-between">
         <h5 class="my-0 font-weight-normal">Pilot Test</h5>
         {% if user.is_authenticated %}
         <nav class="d-flex align-items-center gap-2">
@@ -15,7 +15,7 @@
                     {% endif %}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end text-start">
-                    <li><a class="dropdown-item" href="{% url 'users:user_update' %}">Профиль</a></li>
+                    <li><a class="dropdown-item" href="{% url 'users:profile' %}">Профиль</a></li>
                     <li>
                         <form method="post" action="{% url 'users:logout' %}">
                             {% csrf_token %}
@@ -25,13 +25,21 @@
                 </ul>
             </div>
         </nav>
+        {% endif %}
     </div>
 
-    <!-- Нижняя строка: кнопки навигации, выровненные влево -->
+    {% if user.is_authenticated %}
+    <!-- Нижняя строка: кнопки навигации -->
     <div class="d-flex flex-wrap align-items-center gap-2">
         <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-light{% else %}btn-outline-light{% endif %}"
            href="{% url 'core:home' %}">Главная</a>
 
+        <a class="btn {% if request.resolver_match.view_name == 'users:list' or request.resolver_match.view_name == 'users:group_list' %}btn-light{% else %}btn-outline-light{% endif %}"
+            href="{% url 'users:list' %}">Пилоты</a>
+
+        <a class="btn {% if request.resolver_match.view_name == 'questions:question_list' or request.resolver_match.view_name == 'questions:themes_list' %}btn-light{% else %}btn-outline-light{% endif %}"
+           href="{% url 'questions:question_list' %}">Вопросы</a>
     </div>
     {% endif %}
 </div>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
