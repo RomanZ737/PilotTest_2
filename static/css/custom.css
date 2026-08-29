@@ -160,3 +160,29 @@
     color: #fff !important;
     box-shadow: 0 -2px 8px rgba(13, 202, 240, 0.3);
 }
+
+/* Активная — архив */
+.nav-tabs .nav-link.active.tab-archive {
+    background: rgba(108, 117, 125, 0.25) !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(108, 117, 125, 0.3);
+}
+
+.status-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #fff;
+    margin-right: 4px;
+    vertical-align: middle;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+}
+.status-circle.bg-warning {
+    color: #212529;
+}

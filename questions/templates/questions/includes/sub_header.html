@@ -1,21 +1,60 @@
-    {# Заголовок и кнопка создания #}
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
     <div class="d-flex gap-2">
         <a class="btn {% if request.resolver_match.view_name == 'questions:question_list' %}btn-light{% else %}btn-outline-light{% endif %}"
-           href="{% url 'questions:question_list' %}">
-            <h5 class="mb-0"><i class="bi bi-question-circle"></i> Вопросы</h5>
+           href="{% url 'questions:question_list' %}{% if new_questions_exist %}?new_only=1{% endif %}">
+            <h5 class="mb-0">
+                <i class="bi bi-question-circle"></i>
+                {% if new_questions_exist %}<span class="badge bg-warning text-dark">new</span>{% endif %}
+                Вопросы
+            </h5>
         </a>
+
         <a class="btn {% if request.resolver_match.view_name == 'questions:themes_list' %}btn-light{% else %}btn-outline-light{% endif %}"
-           href="{% url 'questions:themes_list' %}">
-            <h5 class="mb-0"><i class="bi bi-collection"></i> Темы</h5>
+           href="{% url 'questions:themes_list' %}{% if new_themes_exist %}?new_only=1{% endif %}">
+            <h5 class="mb-0">
+                <i class="bi bi-collection"></i>
+                {% if new_themes_exist %}<span class="badge bg-warning text-dark">new</span>{% endif %}
+                Темы
+            </h5>
+        </a>
+        <a class="btn {% if request.resolver_match.view_name == 'questions:history' %}btn-light{% else %}btn-outline-light{% endif %}"
+           href="{% url 'questions:history' %}">
+            <h5 class="mb-0"><i class="bi bi-clock-history"></i> История
+            {% if history_has_new %}
+                 <span class="badge bg-warning text-dark ms-1">new</span>
+            {% endif %}
+            </h5>
+
+
         </a>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'questions:question_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Создать вопрос
-        </a>
-        <a href="{% url 'questions:theme_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Создать тему
-        </a>
+        {% if perms.questions.add_question %}
+            <a href="{% url 'questions:question_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Создать вопрос
+            </a>
+        {% endif %}
+        {% if perms.questions.add_themes %}
+            <a href="{% url 'questions:theme_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Создать тему
+            </a>
+        {% endif %}
+        {% if request.resolver_match.view_name == 'questions:question_list' and new_questions_exist %}
+            <form method="post" action="{% url 'questions:mark_questions_viewed' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-secondary" title="Отметить все вопросы как просмотренные">
+                    <i class="bi bi-check2-all"></i>
+                </button>
+            </form>
+        {% endif %}
+
+        {% if request.resolver_match.view_name == 'questions:themes_list' and new_themes_exist %}
+            <form method="post" action="{% url 'questions:mark_themes_viewed' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-secondary" title="Отметить все темы как просмотренные">
+                    <i class="bi bi-check2-all"></i>
+                </button>
+            </form>
+        {% endif %}
     </div>
 </div>

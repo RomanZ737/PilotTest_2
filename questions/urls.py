@@ -18,7 +18,9 @@ from .views import (
     ParaphraseCreateView,
     ParaphraseUpdateView,
     ParaphraseDeleteView,
-    ParaphrasePublishView
+    ParaphrasePublishView,
+    MarkQuestionsViewedView,
+    MarkThemesViewedView
 )
 from .apps import QuestionsConfig
 
@@ -45,4 +47,7 @@ urlpatterns = [
     path('paraphrase/<int:pk>/update/', ParaphraseUpdateView.as_view(), name='paraphrase_update'),
     path('paraphrase/<int:pk>/delete/', ParaphraseDeleteView.as_view(), name='paraphrase_delete'),
     path('paraphrase/<int:pk>/publish/', ParaphrasePublishView.as_view(), name='paraphrase_publish'),
+    path('history/', QuestionListView.as_view(), name='history'),
+    path('mark-questions-viewed/', MarkQuestionsViewedView.as_view(), name='mark_questions_viewed'),
+    path('mark-themes-viewed/', MarkThemesViewedView.as_view(), name='mark_themes_viewed'),
 ]

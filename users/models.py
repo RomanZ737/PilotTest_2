@@ -21,9 +21,9 @@ class CustomUser(AbstractUser):
         return self.email
 
     class Meta:
-        permissions = (
+        permissions = [
             ("can_deactivate_user", "Can deactivate any user"),
-        )
+        ]
 
 
 class GroupsDescription(models.Model):
@@ -63,6 +63,9 @@ class UserTheme(models.Model):
         unique_together = ['user', 'theme']
         verbose_name = 'Тема пользователя'
         verbose_name_plural = 'Темы пользователей'
+        permissions = [
+            ('can_change_user_themes', 'Can add or remove user Themes')
+        ]
 
     def __str__(self):
         return f'{self.user.email} → {self.theme.name}'

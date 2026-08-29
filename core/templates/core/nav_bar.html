@@ -33,13 +33,29 @@
     <div class="d-flex flex-wrap align-items-center gap-2">
         <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-light{% else %}btn-outline-light{% endif %}"
            href="{% url 'core:home' %}">Главная</a>
+        {% if perms.users.view_customuser %}
+            <a class="btn {% if request.resolver_match.view_name == 'users:list' or request.resolver_match.view_name == 'users:group_list' or request.resolver_match.view_name == 'users:history' %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'users:list' %}">Пилоты
+                {% if new_users_count %}
+                    <span class="badge bg-warning text-dark ms-1">new</span>
+                {% endif %}
+            </a>
+        {% endif %}
 
-        <a class="btn {% if request.resolver_match.view_name == 'users:list' or request.resolver_match.view_name == 'users:group_list' %}btn-light{% else %}btn-outline-light{% endif %}"
-            href="{% url 'users:list' %}">Пилоты</a>
-
-        <a class="btn {% if request.resolver_match.view_name == 'questions:question_list' or request.resolver_match.view_name == 'questions:themes_list' %}btn-light{% else %}btn-outline-light{% endif %}"
-           href="{% url 'questions:question_list' %}">Вопросы</a>
+        {% if perms.questions.view_question %}
+            <a class="btn {% if request.resolver_match.view_name == 'questions:question_list' or request.resolver_match.view_name == 'questions:themes_list' or request.resolver_match.view_name == 'questions:history' %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'questions:question_list' %}{% if new_questions_exist or new_themes_exist %}?new_only=1{% endif %}">
+                Вопросы
+                {% if new_questions_exist or new_themes_exist or history_has_new %}
+                    <span class="badge bg-warning text-dark ms-1">new</span>
+                {% endif %}
+            </a>
+        {% endif %}
+        <a class="btn ms-auto mt-2 {% if request.resolver_match.app_name == 'description' %}btn-light{% else %}btn-outline-light{% endif %}"
+           href="{% url 'description:index' %}">
+            <i class="bi bi-book"></i> Описание
+        </a>
     </div>
     {% endif %}
+
 </div>
-<script src="/static/js/bootstrap.bundle.min.js"></script>

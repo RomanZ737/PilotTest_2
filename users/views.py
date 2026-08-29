@@ -3,10 +3,12 @@ from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, UpdateView, View
 from django.views.generic.detail import DetailView
 from django.views.generic import ListView
-from .forms import CustomUserCreationForm
+from history.models import ActivityLog, TabView
+from questions.services import reset_user_views
+from .forms import CustomUserCreationForm, CustomUserForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from .models import CustomUser, GroupsDescription, UserTheme
-from .services import generate_verification_token, send_verification_email
+from .services import generate_verification_token, send_verification_email, send_welcome_email
 from django.contrib.auth import login
 from django.views.generic import TemplateView
 from django.contrib import messages
@@ -17,10 +19,14 @@ from core.enums import ACType, Position
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password
 from questions.models import Themes
-import json
+from history.services import log_activity
+from django.utils.crypto import get_random_string
+from django.utils import timezone
 
 
-class DeactivateUser(LoginRequiredMixin, View):
+class DeactivateUser(PermissionRequiredMixin, LoginRequiredMixin, View):
+    permission_required = "users.can_deactivate_user"
+
     def post(self, request, pk):
         user = get_object_or_404(CustomUser, id=pk)
         if not request.user.has_perm('users.can_deactivate_user'):
@@ -29,6 +35,16 @@ class DeactivateUser(LoginRequiredMixin, View):
             user.is_active = True
         else:
             user.is_active = False
+
+        action = 'blocked' if not user.is_active else 'unblocked'
+        log_activity(
+            user=request.user,
+            entity_type='user',
+            entity_id=user.pk,
+            entity_name=user.get_full_name() or user.email,
+            action_type=action,
+        )
+
         user.save()
         return redirect('users:list')
 
@@ -41,7 +57,10 @@ class UsersListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
+
         queryset = super().get_queryset().prefetch_related('groups')
+        # Скрываем суперпользователей из списка всех пилотов
+        queryset = queryset.filter(is_superuser=False)
 
         # Поиск по ФИО / email
         search = self.request.GET.get('search', '').strip()
@@ -97,6 +116,50 @@ class UsersListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context['current_ac_type'] = self.request.GET.get('ac_type', '')
         context['current_position'] = self.request.GET.get('position', '')
         context['current_status'] = self.request.GET.get('status', '')
+        context['can_delete_users'] = (
+                self.request.user.is_superuser or
+                self.request.user.groups.filter(name='Администраторы').exists()
+        )
+
+        context['recent_activities'] = ActivityLog.objects.filter(
+            entity_type__in=['user', 'group']
+        ).select_related('user').order_by('-created_at')[:50]
+
+        # Определяем, показывать ли историю
+        context['show_history'] = (self.request.resolver_match.view_name == 'users:history')
+
+        if context['show_history']:
+            context['recent_activities'] = ActivityLog.objects.filter(
+                entity_type__in=['user', 'group']
+            ).select_related('user').order_by('-created_at')[:50]
+
+            # Сбрасываем бейдж «new» при открытии истории
+            if self.request.user.is_authenticated:
+                TabView.objects.update_or_create(
+                    user=self.request.user,
+                    logical_question=None,
+                    tab_type='user_list',
+                    defaults={'viewed_at': timezone.now()}
+                )
+            context['history_has_new'] = False
+
+        else:
+            # Проверяем, есть ли новые события с момента последнего просмотра истории
+            last_view = TabView.objects.filter(
+                user=self.request.user,
+                logical_question=None,
+                tab_type='user_list'
+            ).first()
+            last_viewed = last_view.viewed_at if last_view else None
+
+            new_activities = ActivityLog.objects.filter(
+                entity_type__in=['user', 'group']
+            ).exclude(user=self.request.user)
+
+            if last_viewed:
+                new_activities = new_activities.filter(created_at__gt=last_viewed)
+
+            context['history_has_new'] = new_activities.exists()
 
         return context
 
@@ -131,6 +194,15 @@ class RegisterView(CreateView):
         user.is_email_verified = False
         user.email_verification_token = generate_verification_token()
         user.save()
+
+        log_activity(
+            user=user,
+            entity_type='user',
+            entity_id=user.pk,
+            entity_name=user.get_full_name() or user.email,
+            action_type='registered',
+        )
+
         try:
             send_verification_email(user, self.request)
         except Exception as e:
@@ -168,14 +240,19 @@ class VerificationSentView(TemplateView):
         return context
 
 
-class UserUpdateView(LoginRequiredMixin, UpdateView):
+class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = 'users.change_customuser'
     model = CustomUser
+    form_class = CustomUserForm
     template_name = 'users/user_form.html'
-    fields = [
-        'first_name', 'last_name', 'middle_name',
-        'email', 'phone_number',
-        'position', 'ac_type', 'groups',
-    ]
+
+
+    # переопределяем has_permission для своего профиля
+    def has_permission(self):
+        pk = self.kwargs.get('pk')
+        if pk and int(pk) == self.request.user.pk:
+            return True
+        return super().has_permission()
 
     def get_object(self, queryset=None):
         # Если передан pk — редактируем конкретного пилота, иначе — свой профиль
@@ -206,6 +283,22 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
         context['back_url'] = self.request.GET.get('back', '')
         return context
 
+    def form_valid(self, form):
+        old_groups = set(form.instance.groups.values_list('id', flat=True))
+        response = super().form_valid(form)
+        new_groups = set(form.instance.groups.values_list('id', flat=True))
+
+        target_groups = Group.objects.filter(
+            name__in=['Редактор', 'Супер Редактор', 'Администраторы']
+        ).values_list('id', flat=True)
+        target_ids = set(target_groups)
+
+        if new_groups & target_ids and not old_groups & target_ids:
+            # Пользователь впервые попал в одну из целевых групп
+            reset_user_views(form.instance)
+
+        return response
+
 
 class GroupListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Group
@@ -217,6 +310,9 @@ class GroupListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset().prefetch_related('user_set')
 
+
+
+
         # Поиск по названию или описанию
         search = self.request.GET.get('search', '').strip()
         if search:
@@ -225,6 +321,9 @@ class GroupListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 Q(description__description__icontains=search)
             )
 
+        # Скрываем группу "Администраторы" от всех кроме суперпользователей
+        if not self.request.user.is_superuser:
+            queryset = queryset.exclude(name='Администраторы')
         return queryset.order_by('name')
 
     def get_context_data(self, **kwargs):
@@ -271,8 +370,8 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
         pilot = self.object
 
-        # Темы — для суперпользователя, если пилот редактор
-        if self.request.user.is_superuser:
+        # Темы — только если текущий пользователь может назначать темы
+        if self.request.user.has_perm('users.can_change_user_themes'):
             editor_groups = pilot.groups.filter(name__in=['Редактор', 'Супер Редактор'])
             if editor_groups.exists():
                 context['is_editor'] = True
@@ -327,14 +426,15 @@ class PasswordChangeView(LoginRequiredMixin, View):
         return redirect('users:detail', pk=pk)
 
 
-class UserThemeUpdateView(LoginRequiredMixin, View):
+class UserThemeUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Обновление списка тем, назначенных пользователю."""
+    permission_required = 'users.can_change_user_themes'
 
     def post(self, request, pk):
         pilot = get_object_or_404(CustomUser, pk=pk)
 
-        # Только суперпользователь может назначать темы
-        if not request.user.is_superuser:
+        # Только суперпользователь и Администраторы могут назначать темы
+        if not (request.user.is_superuser or request.user.groups.filter(name='Администраторы').exists()):
             messages.error(request, 'Только суперпользователь может назначать темы.')
             return redirect('users:detail', pk=pk)
 
@@ -357,11 +457,12 @@ class UserThemeUpdateView(LoginRequiredMixin, View):
         return redirect('users:detail', pk=pk)
 
 
-class GroupUpdateView(LoginRequiredMixin, View):
+class GroupUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Редактирование группы (только суперпользователь)."""
+    permission_required = 'auth.change_group'
 
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
+        if not (request.user.is_superuser or request.user.groups.filter(name='Администраторы').exists()):
             messages.error(request, 'Только суперпользователь может редактировать группы.')
             return redirect('users:group_list')
         return super().dispatch(request, *args, **kwargs)
@@ -392,6 +493,14 @@ class GroupUpdateView(LoginRequiredMixin, View):
         group.name = name
         group.save()
 
+        log_activity(
+            user=request.user,
+            entity_type='group',
+            entity_id=group.pk,
+            entity_name=group.name,
+            action_type='updated',
+        )
+
         # Обновляем описание
         desc, _ = GroupsDescription.objects.get_or_create(group=group)
         desc.description = description
@@ -408,11 +517,12 @@ class GroupUpdateView(LoginRequiredMixin, View):
         return redirect('users:group_list')
 
 
-class GroupCreateView(LoginRequiredMixin, View):
+class GroupCreateView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Создание новой группы (только суперпользователь)."""
+    permission_required = 'auth.add_group'
 
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
+        if not (request.user.is_superuser or request.user.groups.filter(name='Администраторы').exists()):
             messages.error(request, 'Только суперпользователь может создавать группы.')
             return redirect('users:group_list')
         return super().dispatch(request, *args, **kwargs)
@@ -456,6 +566,14 @@ class GroupCreateView(LoginRequiredMixin, View):
             is_fixed=is_fixed,
         )
 
+        log_activity(
+            user=request.user,
+            entity_type='group',
+            entity_id=group.pk,
+            entity_name=group.name,
+            action_type='created',
+        )
+
         messages.success(request, f'Группа «{group.name}» создана.')
         back = request.POST.get('back', '') or request.GET.get('back', '')
         if back:
@@ -463,10 +581,11 @@ class GroupCreateView(LoginRequiredMixin, View):
         return redirect('users:group_list')
 
 
-class GroupDetailView(LoginRequiredMixin, DetailView):
+class GroupDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Group
     template_name = 'users/group_detail.html'
     context_object_name = 'group'
+    permission_required = 'auth.view_group'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -477,11 +596,20 @@ class GroupDetailView(LoginRequiredMixin, DetailView):
         context['is_fixed'] = desc.is_fixed if desc else False
         context['pilots'] = group.user_set.all().order_by('last_name', 'first_name')
         context['back_url'] = self.request.GET.get('back', reverse('users:group_list'))
+        # Пилоты, не входящие в группу
+        context['available_pilots'] = CustomUser.objects.filter(
+            is_superuser=False
+        ).exclude(
+            groups=group
+        ).order_by('last_name', 'first_name')
+
+
         return context
 
 
-class GroupDeleteView(LoginRequiredMixin, View):
+class GroupDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Удаление группы (только суперпользователь или для нефиксированных)."""
+    permission_required = 'auth.delete_group'
 
     def post(self, request, pk):
         group = get_object_or_404(Group, pk=pk)
@@ -492,26 +620,176 @@ class GroupDeleteView(LoginRequiredMixin, View):
             messages.error(request, 'Эту группу может удалить только суперпользователь.')
             return redirect('users:group_list')
 
+        log_activity(
+            user=request.user,
+            entity_type='group',
+            entity_id=group.pk,
+            entity_name=group.name,
+            action_type='deleted',
+        )
+
         group.delete()
         messages.success(request, f'Группа «{group.name}» удалена.')
         return redirect('users:group_list')
 
 
-class GroupRemoveUserView(LoginRequiredMixin, View):
+class GroupRemoveUserView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Удаление пилота из группы."""
+    permission_required = 'auth.change_group'
 
     def post(self, request, group_pk, user_pk):
         group = get_object_or_404(Group, pk=group_pk)
 
-        if not request.user.is_superuser:
-            messages.error(request, 'Только суперпользователь может удалять пилотов из группы.')
-            return redirect('users:group_detail', pk=group_pk)
+        # if not request.user.is_superuser:
+        #     messages.error(request, 'Только суперпользователь может удалять пилотов из группы.')
+        #     return redirect('users:group_detail', pk=group_pk)
 
         pilot = get_object_or_404(CustomUser, pk=user_pk)
         group.user_set.remove(pilot)
+
+        log_activity(
+            user=request.user,
+            entity_type='group',
+            entity_id=group_pk,
+            entity_name=group.name,
+            action_type='updated',
+            description=f'Удалён пилот: {pilot.get_full_name() or pilot.email}',
+        )
 
         messages.success(
             request,
             f'{pilot.last_name} {pilot.first_name} удалён из группы «{group.name}».'
         )
         return redirect('users:group_detail', pk=group_pk)
+
+
+class GroupAddUsersView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """Добавление пилотов в группу."""
+    permission_required = 'auth.change_group'
+
+    def post(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+
+        # if not request.user.is_superuser:
+        #     messages.error(request, 'Только суперпользователь может добавлять пилотов в группу.')
+        #     return redirect('users:group_detail', pk=pk)
+
+        user_ids = request.POST.getlist('user_ids', [])
+        added = 0
+        for user_id in user_ids:
+            pilot = get_object_or_404(CustomUser, pk=user_id)
+            if not group.user_set.filter(pk=pilot.pk).exists():
+                group.user_set.add(pilot)
+                added += 1
+
+        log_activity(
+            user=request.user,
+            entity_type='group',
+            entity_id=group.pk,
+            entity_name=group.name,
+            action_type='updated',
+            description=f'Добавлено пилотов: {added}',
+        )
+
+        messages.success(request, f'Добавлено пилотов в группу: {added}.')
+        # Проверяем группу и добавляем записи о просмотренных вопросах
+        # (что бы все вопросы небыли со статусом новые)
+
+        if group.name in ['Редактор', 'Супер Редактор', 'Администраторы']:
+            for user_id in user_ids:
+                pilot = CustomUser.objects.get(pk=user_id)  # или уже есть объект
+                reset_user_views(pilot)
+
+        return redirect('users:group_detail', pk=pk)
+
+
+class AdminUserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    """Создание пилота администратором (KRS или суперпользователь)."""
+    model = CustomUser
+    template_name = 'users/user_form.html'
+    form_class = CustomUserForm
+
+    permission_required = 'users.add_customuser'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not (request.user.is_superuser or request.user.groups.filter(name='KRS').exists()):
+            messages.error(request, 'У вас нет прав для создания пилотов.')
+            return redirect('core:home')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        password = get_random_string(length=12)
+        user.set_password(password)
+        user.is_active = True
+        user.is_email_verified = True
+        user.save()
+        form.save_m2m()
+
+        if user.groups.filter(name__in=['Редактор', 'Супер Редактор', 'Администраторы']).exists():
+            reset_user_views(user)
+
+        log_activity(
+            user=self.request.user,
+            entity_type='user',
+            entity_id=user.pk,
+            entity_name=user.get_full_name() or user.email,
+            action_type='created',
+        )
+
+        # Отправляем приветственное письмо
+        try:
+            send_welcome_email(user, password)
+            messages.success(
+                self.request,
+                f'Пилот {user.get_full_name()} создан. Пароль отправлен на {user.email}.'
+            )
+        except Exception:
+            messages.success(
+                self.request,
+                f'Пилот {user.get_full_name()} создан. Временный пароль: {password}'
+            )
+
+
+
+        return redirect('users:detail', pk=user.pk)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_create'] = True
+        context['back_url'] = reverse('users:list')
+        return context
+
+
+class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """Удаление пилота (только суперпользователь или Администраторы)."""
+
+    permission_required = 'users.delete_customuser'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not (request.user.is_superuser or request.user.groups.filter(name='Администраторы').exists()):
+            messages.error(request, 'У вас нет прав для удаления пилотов.')
+            return redirect('core:home')
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, pk):
+        pilot = get_object_or_404(CustomUser, pk=pk)
+
+        if pilot.is_superuser:
+            messages.error(request, 'Нельзя удалить суперпользователя.')
+            return redirect('users:list')
+
+        email = pilot.email
+
+        log_activity(
+            user=request.user,
+            entity_type='user',
+            entity_id=pilot.pk,
+            entity_name=pilot.get_full_name() or pilot.email,
+            action_type='deleted',
+        )
+
+
+        pilot.delete()
+        messages.success(request, f'Пилот {email} удалён.')
+        return redirect('users:list')

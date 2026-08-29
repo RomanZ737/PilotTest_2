@@ -106,45 +106,6 @@
                     </div>
                 </div>
 
-                {# --- Вес и ограничение по времени --- #}
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        {% bootstrap_field form.q_weight %}
-                    </div>
-                    <div class="col-md-3 mb-3 d-flex align-items-end">
-                        {% bootstrap_field form.is_time_limited %}
-                    </div>
-                </div>
-
-                {# --- Изображение к пояснению --- #}
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        {% bootstrap_field form.comment_img %}
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-12 text-center">
-                        <img id="comment-img-preview"
-                             src="#"
-                             alt="Превью изображения пояснения"
-                             class="img-fluid rounded img-zoomable d-block mx-auto"
-                             style="max-width: 300px; max-height: 300px; object-fit: contain; display: none;"
-                             onclick="this.classList.toggle('zoomed')">
-                        <button type="button" class="btn btn-sm btn-outline-danger mt-2"
-                                id="remove-comment-img" style="display: none;"
-                                onclick="removeImage('id_comment_img', 'comment-img-preview', 'remove-comment-img')">
-                            <i class="bi bi-trash"></i> Удалить изображение
-                        </button>
-                    </div>
-                </div>
-
-                {# --- Пояснение (TinyMCE) --- #}
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        {% bootstrap_field form.comment_text %}
-                    </div>
-                </div>
-
                 {# --- 4. Блок вариантов ответов --- #}
 
 
@@ -213,6 +174,49 @@
                         </div>
                     </div>
                 </div>
+
+
+
+                {# --- Вес и ограничение по времени --- #}
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {% bootstrap_field form.q_weight %}
+                    </div>
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
+                        {% bootstrap_field form.is_time_limited %}
+                    </div>
+                </div>
+
+                {# --- Изображение к пояснению --- #}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {% bootstrap_field form.comment_img %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <img id="comment-img-preview"
+                             src="#"
+                             alt="Превью изображения пояснения"
+                             class="img-fluid rounded img-zoomable d-block mx-auto"
+                             style="max-width: 300px; max-height: 300px; object-fit: contain; display: none;"
+                             onclick="this.classList.toggle('zoomed')">
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-2"
+                                id="remove-comment-img" style="display: none;"
+                                onclick="removeImage('id_comment_img', 'comment-img-preview', 'remove-comment-img')">
+                            <i class="bi bi-trash"></i> Удалить изображение
+                        </button>
+                    </div>
+                </div>
+
+                {# --- Пояснение (TinyMCE) --- #}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        {% bootstrap_field form.comment_text %}
+                    </div>
+                </div>
+
+
 
             </div>  {# конец card-body #}
         </div>  {# конец card #}

@@ -25,6 +25,23 @@
     {# Основная форма #}
     <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        {{ field.label }}: {{ error }}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
 
         {# Карточка перефраза #}
         <div class="card border-info border-3 shadow-sm mb-4">

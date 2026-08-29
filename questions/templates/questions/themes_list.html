@@ -26,11 +26,20 @@
                 </div>
 
                 {# Кнопки действий #}
-                <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary w-100">
+                <div class="col-md-2 d-flex gap-2 align-items-end">
+                    <button type="submit" class="btn btn-primary flex-shrink-0" title="Применить фильтры">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="{% url 'questions:themes_list' %}" class="btn btn-outline-secondary w-100" title="Сбросить фильтры">
+                    {% if new_themes_exist %}
+                        <a href="?new_only=1{% if query_string %}&{{ query_string }}{% endif %}"
+                           class="btn btn-outline-secondary flex-shrink-0 {% if request.GET.new_only == '1' %}active{% endif %}"
+                           title="Показать только новые темы">
+                            <i class="bi bi-bell"></i>
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'questions:themes_list' %}"
+                       class="btn btn-outline-secondary flex-shrink-0"
+                       title="Сбросить фильтры">
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </a>
                 </div>
@@ -47,8 +56,10 @@
                         <tr>
                             <th scope="col" style="width: 5%;">#</th>
                             <th scope="col" style="width: 35%;">Название темы</th>
-                            <th scope="col" style="width: 45%;">Описание</th>
-                            <th scope="col" style="width: 15%;" class="text-end">Действия</th>
+                            <th scope="col" style="width: 40%;">Описание</th>
+                            <th scope="col" style="width: 8%;">Вопросы</th>
+                            <th scope="col" style="width: 8%;">Изменения</th>
+                            <th scope="col" style="width: 12%;" class="text-end">Действия</th>
                         </tr>
                     </thead>
                     <tbody class="bg-gray-200" style="--bs-table-bg: transparent;">
@@ -64,29 +75,43 @@
                                 <td>
                                     <small class="text-muted">{{ theme.description|default:"—"|truncatechars:100 }}</small>
                                 </td>
+                                <td>
+                                    <a href="{% url 'questions:question_list' %}?theme={{ theme.pk }}"
+                                       class="text-decoration-none">
+                                        {{ theme.question_count }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if theme.is_new %}
+                                        <span class="badge bg-warning text-dark">new</span>
+                                    {% endif %}
+                                </td>
+
                                 <td class="text-end">
+                                    {% if perms.questions.change_themes %}
                                     <a href="{% url 'questions:theme_update' theme.pk %}"
                                        class="btn btn-sm btn-outline-primary"
                                        title="Редактировать тему">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-
+                                    {% endif %}
 
                                     {# Кнопка удаления #}
-                                    <form method="post" action="{% url 'questions:theme_delete' theme.pk %}" style="display:inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('Удалить тему «{{ theme.name }}»?\nВопросы этой темы полностью удаляться!.');">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-
+                                    {% if perms.questions.delete_themes %}
+                                        <form method="post" action="{% url 'questions:theme_delete' theme.pk %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Удалить тему «{{ theme.name }}»?\nВопросы этой темы полностью удалятся!.');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
 
                                 </td>
                             </tr>
                         {% empty %}
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">
+                                <td colspan="6" class="text-center py-4 text-muted">
                                     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                     Тем не найдено. Попробуйте изменить параметры поиска.
                                 </td>

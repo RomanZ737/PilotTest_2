@@ -10,6 +10,7 @@ urlpatterns = [
     path('users/', include('users.urls', namespace='users')),
     path('questions/', include('questions.urls', namespace='questions')),
     path('history/', include('history.urls', namespace='history')),
+    path('description/', include('description.urls', namespace='description')),
 ]
 
 if settings.DEBUG:

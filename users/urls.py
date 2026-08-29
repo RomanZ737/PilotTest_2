@@ -21,7 +21,7 @@ from .views import (
     GroupDeleteView,
     GroupCreateView,
     GroupDetailView,
-    GroupRemoveUserView,
+    GroupRemoveUserView, GroupAddUsersView, AdminUserCreateView, UserDeleteView,
 )
 from django.contrib.auth.views import (
     PasswordResetView,
@@ -76,4 +76,8 @@ urlpatterns = [
     path('groups/create/', GroupCreateView.as_view(), name='group_create'),
     path('groups/<int:pk>/', GroupDetailView.as_view(), name='group_detail'),
     path('groups/<int:group_pk>/remove/<int:user_pk>/', GroupRemoveUserView.as_view(), name='group_remove_user'),
+    path('groups/<int:pk>/add-users/', GroupAddUsersView.as_view(), name='group_add_users'),
+    path('create/', AdminUserCreateView.as_view(), name='create'),
+    path('<int:pk>/delete/', UserDeleteView.as_view(), name='delete'),
+    path('history/', UsersListView.as_view(), name='history'),
 ]

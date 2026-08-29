@@ -26,42 +26,44 @@
             {# ============================================ #}
 
             {% if type == "question" %}
+                {% if perms.questions.can_publish and not item.is_archived %}
+                    {# Опубликовать #}
+                    {% if not item.is_published and not item.is_archived %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-success"
+                                title="Опубликовать вопрос"
+                                data-bs-toggle="modal"
+                                data-bs-target="#actionModal"
+                                data-action-url="{% url 'questions:publish' item.pk %}"
+                                data-action-title="Опубликовать вопрос"
+                                data-action-text="Вы уверены, что хотите опубликовать этот вопрос? Необходим комментарий"
+                                data-btn-class="btn-success"
+                                data-btn-text="Опубликовать"
+                                data-question-text="{{ item.question|truncatechars:100 }}"
+                                data-redirect-to="detail">
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                    {% endif %}
 
-                {# Опубликовать #}
-                {% if not item.is_published and not item.is_archived %}
-                    <button type="button"
-                            class="btn btn-sm btn-outline-success"
-                            title="Опубликовать вопрос"
-                            data-bs-toggle="modal"
-                            data-bs-target="#actionModal"
-                            data-action-url="{% url 'questions:publish' item.pk %}"
-                            data-action-title="Опубликовать вопрос"
-                            data-action-text="Вы уверены, что хотите опубликовать этот вопрос? Необходим комментарий"
-                            data-btn-class="btn-success"
-                            data-btn-text="Опубликовать"
-                            data-question-text="{{ item.question|truncatechars:100 }}"
-                            data-redirect-to="detail">
-                        <i class="bi bi-check-circle"></i>
-                    </button>
+                    {# Снять с публикации #}
+                    {% if item.is_published %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-warning"
+                                title="Снять с публикации"
+                                data-bs-toggle="modal"
+                                data-bs-target="#actionModal"
+                                data-action-url="{% url 'questions:publish' item.pk %}"
+                                data-action-title="Снять с публикации"
+                                data-action-text="Вы уверены, что хотите снять этот вопрос с публикации? Необходим комментарий"
+                                data-btn-class="btn-warning"
+                                data-btn-text="Снять с публикации"
+                                data-question-text="{{ item.question|truncatechars:100 }}">
+                            <i class="bi bi-eye-slash"></i>
+                        </button>
+                    {% endif %}
                 {% endif %}
 
-                {# Снять с публикации #}
-                {% if item.is_published %}
-                    <button type="button"
-                            class="btn btn-sm btn-outline-warning"
-                            title="Снять с публикации"
-                            data-bs-toggle="modal"
-                            data-bs-target="#actionModal"
-                            data-action-url="{% url 'questions:publish' item.pk %}"
-                            data-action-title="Снять с публикации"
-                            data-action-text="Вы уверены, что хотите снять этот вопрос с публикации? Необходим комментарий"
-                            data-btn-class="btn-warning"
-                            data-btn-text="Снять с публикации"
-                            data-question-text="{{ item.question|truncatechars:100 }}">
-                        <i class="bi bi-eye-slash"></i>
-                    </button>
-                {% endif %}
-
+            {% if perms.questions.add_questiondraft and type == "question" and not item.drafts.exists %}
                 {# Редактировать (создать черновик) #}
                 {% if not item.drafts.exists %}
                     <form method="post" action="{% url 'questions:draft_create' item.pk %}" style="display:inline;">
@@ -71,24 +73,26 @@
                         </button>
                     </form>
                 {% endif %}
-
+            {% endif %}
+            {% if perms.questions.add_questionparaphrase and type == "question" and not item.paraphrases.exists %}
                 {# Создать перефраз #}
                 {% if not item.paraphrases.exists %}
                     <a href="{% url 'questions:paraphrase_create' item.pk %}" class="btn btn-sm btn-outline-info" title="Создать перефраз">
                         <i class="bi bi-arrow-repeat"></i>
                     </a>
                 {% endif %}
-
-                {# Удалить #}
-                <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            title="Удалить вопрос"
-                            onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </form>
-
+            {% endif %}
+                {% if perms.questions.delete_question %}
+                    {# Удалить #}
+                    <form method="post" action="{% url 'questions:question_delete' item.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                title="Удалить вопрос"
+                                onclick="return confirm('Это необратимое действие. Вы уверены, что хотите удалить вопрос:\n\n{{ item.question|truncatechars:100 }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                {% endif %}
             {% endif %}
 
             {# ============================================ #}
@@ -96,32 +100,36 @@
             {# ============================================ #}
 
             {% if type == "draft" %}
-                <button type="button"
-                        class="btn btn-sm btn-outline-success"
-                        title="Опубликовать черновик"
-                        data-bs-toggle="modal"
-                        data-bs-target="#actionModal"
-                        data-action-url="{% url 'questions:draft_publish' item.pk %}"
-                        data-action-title="Опубликовать черновик"
-                        data-action-text="Вы уверены, что хотите опубликовать черновик? Текущая версия вопроса станет архивной. Необходим комментарий."
-                        data-btn-class="btn-success"
-                        data-btn-text="Опубликовать"
-                        data-question-text="{{ item.question|truncatechars:100 }}">
-                    <i class="bi bi-check2-circle"></i>
-                </button>
-
-                <a href="{% url 'questions:draft_edit' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать черновик">
-                    <i class="bi bi-pencil-square"></i>
-                </a>
-
-                <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            title="Удалить черновик"
-                            onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
-                        <i class="bi bi-trash"></i>
+                {% if perms.questions.can_publish and type == "draft" %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-success"
+                            title="Опубликовать черновик"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal"
+                            data-action-url="{% url 'questions:draft_publish' item.pk %}"
+                            data-action-title="Опубликовать черновик"
+                            data-action-text="Вы уверены, что хотите опубликовать черновик? Текущая версия вопроса станет архивной. Необходим комментарий."
+                            data-btn-class="btn-success"
+                            data-btn-text="Опубликовать"
+                            data-question-text="{{ item.question|truncatechars:100 }}">
+                        <i class="bi bi-check2-circle"></i>
                     </button>
-                </form>
+                {% endif %}
+                {% if perms.questions.change_questiondraft and type == "draft" %}
+                    <a href="{% url 'questions:draft_edit' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать черновик">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                {% endif %}
+                {% if perms.questions.delete_questiondraft and type == "draft" %}
+                    <form method="post" action="{% url 'questions:draft_delete' item.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                title="Удалить черновик"
+                                onclick="return confirm('Удалить черновик?\n\nОригинальный вопрос останется без изменений.')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                {% endif %}
             {% endif %}
 
             {# ============================================ #}
@@ -129,52 +137,56 @@
             {# ============================================ #}
 
             {% if type == "paraphrase" %}
-
+                {% if perms.questions.can_publish and type == "paraphrase" %}
                 {# Опубликовать / Снять с публикации #}
-                {% if item.is_published %}
-                    <button type="button"
-                            class="btn btn-sm btn-outline-warning"
-                            title="Снять перефраз с публикации"
-                            data-bs-toggle="modal"
-                            data-bs-target="#actionModal"
-                            data-action-url="{% url 'questions:paraphrase_publish' item.pk %}"
-                            data-action-title="Снять перефраз с публикации"
-                            data-action-text="Вы уверены, что хотите снять перефраз с публикации? Необходим комментарий."
-                            data-btn-class="btn-warning"
-                            data-btn-text="Снять с публикации"
-                            data-question-text="{{ item.question|truncatechars:100 }}">
-                        <i class="bi bi-eye-slash"></i>
-                    </button>
-                {% else %}
-                    <button type="button"
-                            class="btn btn-sm btn-outline-success"
-                            title="Опубликовать перефраз"
-                            data-bs-toggle="modal"
-                            data-bs-target="#actionModal"
-                            data-action-url="{% url 'questions:paraphrase_publish' item.pk %}"
-                            data-action-title="Опубликовать перефраз"
-                            data-action-text="Вы уверены, что хотите опубликовать перефраз? Необходим комментарий."
-                            data-btn-class="btn-success"
-                            data-btn-text="Опубликовать"
-                            data-question-text="{{ item.question|truncatechars:100 }}">
-                        <i class="bi bi-check-circle"></i>
-                    </button>
-                {% endif %}
+                    {% if item.is_published %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-warning"
+                                title="Снять перефраз с публикации"
+                                data-bs-toggle="modal"
+                                data-bs-target="#actionModal"
+                                data-action-url="{% url 'questions:paraphrase_publish' item.pk %}"
+                                data-action-title="Снять перефраз с публикации"
+                                data-action-text="Вы уверены, что хотите снять перефраз с публикации? Необходим комментарий."
+                                data-btn-class="btn-warning"
+                                data-btn-text="Снять с публикации"
+                                data-question-text="{{ item.question|truncatechars:100 }}">
+                            <i class="bi bi-eye-slash"></i>
+                        </button>
+                    {% else %}
 
+                        <button type="button"
+                                class="btn btn-sm btn-outline-success"
+                                title="Опубликовать перефраз"
+                                data-bs-toggle="modal"
+                                data-bs-target="#actionModal"
+                                data-action-url="{% url 'questions:paraphrase_publish' item.pk %}"
+                                data-action-title="Опубликовать перефраз"
+                                data-action-text="Вы уверены, что хотите опубликовать перефраз? Необходим комментарий."
+                                data-btn-class="btn-success"
+                                data-btn-text="Опубликовать"
+                                data-question-text="{{ item.question|truncatechars:100 }}">
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                    {% endif %}
+                {% endif %}
                 {# Редактировать #}
+            {% if perms.questions.change_questionparaphrase and type == "paraphrase" %}
                 <a href="{% url 'questions:paraphrase_update' item.pk %}" class="btn btn-sm btn-outline-dark" title="Редактировать перефраз">
                     <i class="bi bi-pencil-square"></i>
                 </a>
-
-                {# Удалить #}
-                <form method="post" action="{% url 'questions:paraphrase_delete' item.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            title="Удалить перефраз"
-                            onclick="return confirm('Удалить перефраз?\n\nЭто действие необратимо.')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </form>
+            {% endif %}
+                {% if perms.questions.delete_questionparaphrase and type == "paraphrase" %}
+                    {# Удалить #}
+                    <form method="post" action="{% url 'questions:paraphrase_delete' item.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                title="Удалить перефраз"
+                                onclick="return confirm('Удалить перефраз?\n\nЭто действие необратимо.')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                {% endif %}
             {% endif %}
 
             {# ============================================ #}
@@ -182,21 +194,22 @@
             {# ============================================ #}
 
             {% if type == "archive" %}
-                <button type="button"
-                        class="btn btn-sm btn-outline-secondary"
-                        title="Восстановить архивную версию"
-                        data-bs-toggle="modal"
-                        data-bs-target="#actionModal"
-                        data-action-url="{% url 'questions:archive_restore' parent_pk %}"
-                        data-action-title="Восстановить архивную версию"
-                        data-action-text="Текущая версия вопроса будет сохранена как черновик. Архивная версия станет основной. Необходим комментарий."
-                        data-btn-class="btn-secondary"
-                        data-btn-text="Восстановить"
-                        data-question-text="{{ item.question|truncatechars:100 }}">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                </button>
+                {% if perms.questions.can_restore and type == "archive" %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            title="Восстановить архивную версию"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal"
+                            data-action-url="{% url 'questions:archive_restore' parent_pk %}"
+                            data-action-title="Восстановить архивную версию"
+                            data-action-text="Текущая версия вопроса будет сохранена как черновик. Архивная версия станет основной. Необходим комментарий."
+                            data-btn-class="btn-secondary"
+                            data-btn-text="Восстановить"
+                            data-question-text="{{ item.question|truncatechars:100 }}">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                {% endif %}
             {% endif %}
-
         </div>
 
         {# Бейджи статуса #}

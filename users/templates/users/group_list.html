@@ -72,10 +72,12 @@
                                 {# Действия #}
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
-                                        <a href="{% url 'users:group_edit' group.pk %}" class="btn btn-sm btn-outline-primary" title="Редактировать">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-
+                                        {% if perms.auth.change_group %}
+                                            <a href="{% url 'users:group_edit' group.pk %}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if perms.auth.delete_group %}
                                             <form method="post" action="{% url 'users:group_delete' group.pk %}" style="display:inline;">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"
@@ -85,7 +87,7 @@
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
-
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>

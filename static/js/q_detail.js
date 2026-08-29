@@ -155,6 +155,14 @@ document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
         }
     }
 
+    // Активация вкладки «Перефраз» при редиректе с параметром ?tab=paraphrase
+    if (urlParams.get('tab') === 'paraphrase') {
+        const paraphraseTab = document.getElementById('paraphrase-tab');
+        if (paraphraseTab) {
+            const bsTab = new bootstrap.Tab(paraphraseTab);
+            bsTab.show();
+        }
+    }
 
     document.querySelectorAll('a[href*="#history"]').forEach(function(link) {
         link.addEventListener('click', function(e) {
@@ -168,15 +176,14 @@ document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
     // Прокручиваем к блоку истории, если есть сообщения (сохранение произошло)
 
 
-        // Сброс индикатора new при открытии вкладки черновика
-    const draftTab = document.getElementById('draft-tab');
-    if (draftTab) {
-        draftTab.addEventListener('shown.bs.tab', function() {
-            const badge = document.getElementById('draft-new-badge');
+    // Скрытие бейджей new при открытии вкладки
+    document.querySelectorAll('#questionTabs button[data-bs-toggle="tab"]').forEach(function(tab) {
+        tab.addEventListener('shown.bs.tab', function() {
+            const badge = this.querySelector('.new-badge');
             if (badge) {
                 badge.style.display = 'none';
             }
         });
-    }
+    });
 
 });

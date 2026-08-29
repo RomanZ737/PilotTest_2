@@ -159,6 +159,7 @@ class TabView(models.Model):
         ('question', 'Вопрос'),
         ('draft', 'Черновик'),
         ('paraphrase', 'Перефраз'),
+        ('theme', 'Тема'),
     ]
 
     user = models.ForeignKey(
@@ -169,7 +170,9 @@ class TabView(models.Model):
     logical_question = models.ForeignKey(
         'questions.Question',
         on_delete=models.CASCADE,
-        related_name='tab_views'
+        related_name='tab_views',
+        null=True,
+        blank=True,
     )
     tab_type = models.CharField(
         max_length=20,
@@ -177,6 +180,15 @@ class TabView(models.Model):
         verbose_name='Тип вкладки'
     )
     viewed_at = models.DateTimeField(auto_now=True, verbose_name='Дата просмотра')
+
+    theme = models.ForeignKey(
+        'questions.Themes',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='tab_views',
+        verbose_name='Тема'
+    )
 
     class Meta:
         unique_together = ['user', 'logical_question', 'tab_type']
@@ -189,3 +201,71 @@ class TabView(models.Model):
 
     def __str__(self):
         return f'{self.user} → {self.logical_question} [{self.get_tab_type_display()}]'
+
+
+class ActivityLog(models.Model):
+    """Общий журнал событий системы."""
+
+    ENTITY_TYPES = [
+        ('question', 'Вопрос'),
+        ('theme', 'Тема'),
+        ('user', 'Пользователь'),
+        ('group', 'Группа'),
+    ]
+
+    ACTION_TYPES = [
+        ('created', 'Создание'),
+        ('updated', 'Изменение'),
+        ('deleted', 'Удаление'),
+        ('published', 'Публикация'),
+        ('unpublished', 'Снятие с публикации'),
+        ('blocked', 'Блокировка'),
+        ('unblocked', 'Разблокировка'),
+        ('registered', 'Регистрация'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='activities',
+        verbose_name='Кто совершил'
+    )
+    user_name = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name='Имя пользователя',
+        help_text='Сохраняется на случай удаления пользователя'
+    )
+
+    entity_type = models.CharField(max_length=20, choices=ENTITY_TYPES, verbose_name='Тип сущности')
+    entity_id = models.IntegerField(verbose_name='ID сущности')
+    entity_name = models.CharField(max_length=500, blank=True, verbose_name='Название сущности')
+
+    action_type = models.CharField(max_length=20, choices=ACTION_TYPES, verbose_name='Действие')
+
+    theme = models.ForeignKey(
+        'questions.Themes',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Тема (для фильтрации по редакторам)'
+    )
+
+    description = models.TextField(blank=True, verbose_name='Описание')
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата события')
+
+    class Meta:
+        verbose_name = 'Запись активности'
+        verbose_name_plural = 'Журнал активности'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['entity_type', 'entity_id']),
+            models.Index(fields=['theme', '-created_at']),
+            models.Index(fields=['action_type']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f'[{self.get_entity_type_display()}] {self.get_action_type_display()}: {self.entity_name}'

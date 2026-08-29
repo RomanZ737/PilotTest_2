@@ -31,14 +31,15 @@
                         <span class="fw-bold">Пилот</span>
 
                         {# Кнопки действий #}
-                        {% if user == pilot or perms.users.change_customuser %}
+                        {% if perms.users.change_customuser or user == pilot %}
+
                             <a href="{% url 'users:edit' pilot.pk %}?back={{ back_url|urlencode }}"
                                class="btn btn-sm btn-outline-primary" title="Редактировать">
                                 <i class="bi bi-pencil"></i>
                             </a>
                         {% endif %}
 
-                        {% if user == pilot or perms.users.change_customuser %}
+                        {% if perms.users.change_customuser or user == pilot %}
                             <button type="button"
                                     class="btn btn-sm btn-outline-warning"
                                     title="Сменить пароль"
@@ -48,7 +49,7 @@
                             </button>
                         {% endif %}
 
-                        {% if perms.users.can_deactivate_user and pilot != user %}
+                        {% if perms.users.can_deactivate_user %}
                             <form method="post" action="{% url 'users:deactivate' pilot.pk %}" style="display:inline;">
                                 {% csrf_token %}
                                 {% if pilot.is_active %}
@@ -66,6 +67,18 @@
                                 {% endif %}
                             </form>
                         {% endif %}
+
+                        {% if perms.users.delete_customuser %}
+                            <form method="post" action="{% url 'users:delete' pilot.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        title="Удалить"
+                                        onclick="return confirm('Удалить пилота {{ pilot.email }}?\n\nЭто действие необратимо.');">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        {% endif %}
+
                     </div>
                     <div>
                         {% if pilot.is_active %}
@@ -121,7 +134,7 @@
                                     {% endfor %}
                                 </dd>
 
-                                {% if is_editor %}
+                                {% if is_editor and perms.users.can_change_user_themes %}
                                     <dt class="col-sm-4">Темы</dt>
                                     <dd class="col-sm-8">
                                         {% for ut in assigned_themes %}
@@ -129,7 +142,7 @@
                                         {% empty %}
                                             <span class="text-muted">Не назначены</span>
                                         {% endfor %}
-                                        {% if user.is_superuser %}
+
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-info ms-2"
                                                     data-bs-toggle="modal"
@@ -137,7 +150,7 @@
                                                     title="Назначить темы">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                        {% endif %}
+
                                     </dd>
                                 {% endif %}
                             </dl>
@@ -197,7 +210,7 @@
 
 {# Модальное окно #}
 {% include 'users/includes/password_modal.html' %}
-{% if is_editor and user.is_superuser %}
+{% if is_editor and perms.users.can_change_user_themes %}
     {% include 'users/includes/theme_assignment_modal.html' %}
 {% endif %}
 {% endblock %}

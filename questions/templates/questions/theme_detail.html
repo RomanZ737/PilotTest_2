@@ -28,10 +28,13 @@
                         <span class="fw-bold">{{ theme.name }}</span>
                     </div>
                     <div>
+                        {% if perms.questions.change_themes %}
                         <a href="{% url 'questions:theme_update' theme.pk %}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-pencil"></i>
                         </a>
+                        {% endif %}
                         {# Кнопка удаления #}
+                        {% if perms.questions.delete_themes %}
                         <form method="post" action="{% url 'questions:theme_delete' theme.pk %}" style="display:inline;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-outline-danger"
@@ -39,6 +42,7 @@
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
+                        {% endif %}
                     </div>
                 </div>
 

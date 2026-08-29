@@ -9,6 +9,7 @@ from config import settings
 class Themes(models.Model):
     name = models.CharField(max_length=200, verbose_name="Название Темы")
     description = models.TextField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлена')
 
     class Meta:
         ordering = ['name']
@@ -138,6 +139,10 @@ class Question(BaseQuestion):
         ordering = ['theme__name', 'question']
         verbose_name = "Вопрос"
         verbose_name_plural = "Вопросы"
+        permissions = [
+            ("can_publish", "Can publish/unpublish questions"),
+            ("can_restore", "Can restore archived questions"),
+        ]
 
 
 
@@ -179,6 +184,9 @@ class QuestionParaphrase(BaseQuestion):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['original_question', 'is_published']),
+        ]
+        permissions = [
+            ("can_publish", "Can publish/unpublish paraphrase"),
         ]
 
     def get_answers(self):
@@ -223,6 +231,9 @@ class QuestionDraft(BaseQuestion):
             models.Index(fields=['original_question']),
             models.Index(fields=['created_by', 'updated_at']),
             models.Index(fields=['-created_at']),  # для быстрой сортировки
+        ]
+        permissions = [
+            ("can_publish", "Can publish"),
         ]
 
     def get_answers(self):

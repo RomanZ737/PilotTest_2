@@ -3,6 +3,70 @@ from .models import CustomUser
 from django import forms
 
 
+from django import forms
+from .models import CustomUser
+
+
+class CustomUserForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = [
+            'first_name', 'last_name', 'middle_name',
+            'email', 'phone_number',
+            'position', 'ac_type', 'groups',
+        ]
+        labels = {
+            'first_name': 'Имя',
+            'last_name': 'Фамилия',
+            'middle_name': 'Отчество',
+            'email': 'Email',
+            'phone_number': 'Телефон',
+            'position': 'Должность',
+            'ac_type': 'Тип ВС',
+            'groups': 'Группы',
+        }
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Введите имя',
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Введите фамилию',
+            }),
+            'middle_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Введите отчество (если есть)',
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'example@domain.com',
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '+7 999 123 45 67',
+            }),
+            'position': forms.Select(attrs={
+                'class': 'form-select',
+            }),
+            'ac_type': forms.Select(attrs={
+                'class': 'form-select',
+            }),
+            'groups': forms.SelectMultiple(attrs={
+                'class': 'form-select',
+                'size': 6,
+            }),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        groups = cleaned_data.get('groups')
+        if not groups:
+            self.add_error('groups', 'Необходимо назначить хотя бы одну группу.')
+        return cleaned_data
+
+
+
 class CustomUserCreationForm(UserCreationForm):
     phone_number = forms.CharField(max_length=15, required=False,
                                    help_text='Необязательное поле. Введите ваш номер телефона.')

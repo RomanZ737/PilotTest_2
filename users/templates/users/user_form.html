@@ -2,7 +2,7 @@
 {% load django_bootstrap5 %}
 
 {% block title %}
-    {% if user == form.instance %}Мой профиль{% else %}Редактирование пилота{% endif %}
+    {% if is_create %}Создание пилота{% else %}Редактирование данных{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -11,14 +11,12 @@
     {# Хлебные крошки #}
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb align-items-center">
-            <li class="breadcrumb-item">
-                <a href="{% url 'users:detail' form.instance.pk %}{% if back_url %}?back={{ back_url|urlencode }}{% endif %}"
-                   class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-arrow-left"></i>
-                </a>
-            </li>
             <li class="breadcrumb-item active fs-5">
-                {% if user == form.instance %}Мой профиль{% else %}{{ form.instance.last_name }} {{ form.instance.first_name }}{% endif %}
+                {% if is_create %}
+                    Новый пилот
+                {% else %}
+                    {% if user == form.instance %}Мой профиль{% else %}{{ form.instance.last_name }} {{ form.instance.first_name }}{% endif %}
+                {% endif %}
             </li>
         </ol>
     </nav>
@@ -26,11 +24,27 @@
     <form method="post" novalidate>
         {% csrf_token %}
 
+        {# Общие ошибки формы #}
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <div>{{ field.label }}: {{ error }}</div>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
         <div class="card border-primary border-3 shadow-sm mb-4">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-person-gear text-primary fs-5"></i>
-                    <span class="fw-bold">Редактирование данных</span>
+                    <span class="fw-bold">
+                        {% if is_create %}Новый пилот{% else %}Редактирование данных{% endif %}
+                    </span>
                 </div>
             </div>
 
@@ -78,7 +92,16 @@
                                     </option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Группы, к которым принадлежит пользователь. Пользователь получит все права, назначенные каждой из выбранных групп.</div>
+                            {% if form.groups.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.groups.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Группы, к которым принадлежит пользователь. Пользователь получит все права, назначенные каждой из выбранных групп.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -86,11 +109,18 @@
         </div>
 
         <div class="d-flex justify-content-between">
-            <a href="{% url 'users:detail' form.instance.pk %}" class="btn btn-outline-light">
-                <i class="bi bi-x-circle"></i> Отмена
-            </a>
+            {% if is_create %}
+                <a href="{{ back_url }}" class="btn btn-outline-light">
+                    <i class="bi bi-x-circle"></i> Отмена
+                </a>
+            {% else %}
+                <a href="{% url 'users:detail' form.instance.pk %}" class="btn btn-outline-light">
+                    <i class="bi bi-x-circle"></i> Отмена
+                </a>
+            {% endif %}
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check-circle"></i> Сохранить
+                <i class="bi bi-check-circle"></i>
+                {% if is_create %}Создать{% else %}Сохранить{% endif %}
             </button>
         </div>
     </form>

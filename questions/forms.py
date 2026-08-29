@@ -2,12 +2,22 @@ from django import forms
 from .models import Question, Answer, Themes, QuestionDraft, QuestionParaphrase
 from django.forms import inlineformset_factory
 from django.forms import BaseInlineFormSet, ValidationError
+from questions.services import get_user_themes
 
 
 class ThemeForm(forms.ModelForm):
     class Meta:
         model = Themes
         fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            available_themes = get_user_themes(user)
+            if 'theme' in self.fields:
+                self.fields['theme'].queryset = available_themes
 
     # Проверяем существует ли уже такая тема
     def clean_name(self):
@@ -21,6 +31,8 @@ class ThemeForm(forms.ModelForm):
 
 
 class QuestionForm(forms.ModelForm):
+
+
     class Meta:
         model = Question
         fields = ['question',
@@ -54,6 +66,15 @@ class QuestionForm(forms.ModelForm):
                 'placeholder': 'Пояснение к ответу...'
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            available_themes = get_user_themes(user)
+            if 'theme' in self.fields:
+                self.fields['theme'].queryset = available_themes
 
     # Проверяем существует ли уже такой вопрос
     def clean_question(self):
@@ -154,6 +175,15 @@ class DraftForm(forms.ModelForm):
                 'placeholder': 'Пояснение к ответу...'
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            available_themes = get_user_themes(user)
+            if 'theme' in self.fields:
+                self.fields['theme'].queryset = available_themes
 
     def clean_question(self):
         question = self.cleaned_data.get('question')
