@@ -6,9 +6,10 @@
         <title>{% block title %}SPAM SERVICE{% endblock %}</title>
         <link rel="stylesheet" href="/static/css/bootstrap.min.css">
         <link rel="stylesheet" href="/static/icons/bootstrap-icons.css">
+        <link rel="stylesheet" href="/static/css/custom.css">
 
     </head>
-    <body>
+    <body class="bg-gray-128">
         {% include 'core/nav_bar.html' %}
         {# Блок для вывода системных сообщений #}
         <div class="container mt-3">
@@ -30,5 +31,23 @@
         {% include 'core/footer.html' %}
 
         <script src="/static/js/bootstrap.bundle.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Активация Bootstrap tooltips
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                });
+
+                // Автоскрытие сообщений через 5 секунд
+                var alerts = document.querySelectorAll('.alert-dismissible');
+                alerts.forEach(function(alert) {
+                    setTimeout(function() {
+                        var bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }, 5000);
+                });
+            });
+        </script>
     </body>
 </html>

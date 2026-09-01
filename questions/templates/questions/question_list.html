@@ -1,0 +1,314 @@
+{% extends "core/base.html" %}
+{% load django_bootstrap5 %}
+
+{% block title %}Список вопросов{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {# Заголовок и кнопка создания #}
+    {% include 'questions/includes/sub_header.html'%}
+
+    {% if show_history %}
+
+        {# ==================== История ==================== #}
+        <div class="card shadow-sm rounded-3 border-0 bg-gray-200">
+            <div class="card-body p-0">
+                <div class="table-responsive rounded-3 border-0">
+                    <table class="table table-hover align-middle mb-0 bg-transparent">
+                        <thead class="bg-gray-170">
+                            <tr>
+                                <th style="width: 15%;">Дата</th>
+                                <th style="width: 15%;">Пользователь</th>
+                                <th style="width: 10%;">Тип</th>
+                                <th style="width: 10%;">Действие</th>
+                                <th style="width: 50%;">Описание</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-gray-200">
+                            {% for activity in recent_activities %}
+                                <tr>
+                                    <td class="small">{{ activity.created_at|date:"d.m.Y H:i" }}</td>
+                                    <td>
+                                        {% if activity.user %}
+                                            {{ activity.user.last_name }} {{ activity.user.first_name }}
+                                        {% else %}
+                                            {{ activity.user_name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ activity.get_entity_type_display }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if activity.action_type == 'deleted' %}bg-danger
+                                            {% elif activity.action_type == 'created' %}bg-success
+                                            {% elif activity.action_type == 'published' %}bg-primary
+                                            {% elif activity.action_type == 'unpublished' %}bg-warning text-dark
+                                            {% else %}bg-info{% endif %}">
+                                            {{ activity.get_action_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{ activity.entity_name }}
+                                        {% if activity.description %}
+                                            <br><small class="text-muted">{{ activity.description }}</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        История пуста.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+
+        {# ==================== Вопросы ==================== #}
+        {# Форма поиска и фильтров #}
+        <div class="card shadow-sm bg-gray-170 rounded-3 border-0 mb-2">
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+    {# Поиск #}
+    <div class="col-md-3">
+        <label for="search" class="form-label">Поиск</label>
+        <div class="input-group">
+            <input type="text" name="search" id="search" class="form-control"
+                   placeholder="Поиск по вопросам..." value="{{ request.GET.search|default:'' }}">
+            <button class="btn btn-outline-secondary" type="submit">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </div>
+
+    {# Тема #}
+    <div class="col-md-3">
+        <label for="theme" class="form-label">Тема</label>
+        <select name="theme" id="theme" class="form-select">
+            <option value="">Все темы</option>
+            {% for theme in themes %}
+                <option value="{{ theme.id }}" {% if request.GET.theme == theme.id|stringformat:"s" %}selected{% endif %}>
+                    {{ theme.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# Тип ВС #}
+    <div class="col-md-2">
+        <label for="ac_type" class="form-label">Тип ВС</label>
+        <select name="ac_type" id="ac_type" class="form-select">
+            <option value="">Все</option>
+            {% for value, label in ac_type_choices %}
+                <option value="{{ value }}" {% if request.GET.ac_type == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# Статус #}
+    <div class="col-md-2">
+        <label for="status" class="form-label">Статус</label>
+        <select name="status" id="status" class="form-select">
+            <option value="">Все</option>
+            <option value="published" {% if request.GET.status == 'published' %}selected{% endif %}>Опубликован</option>
+            <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Не опубликован</option>
+        </select>
+    </div>
+
+    {# Кнопки #}
+    <div class="col-md-2 d-flex gap-2 align-items-end">
+        <button type="submit" class="btn btn-primary flex-shrink-0" title="Применить фильтры">
+            <i class="bi bi-funnel"></i>
+        </button>
+        {% if new_questions_exist %}
+        <a href="?new_only=1{% if query_string %}&{{ query_string }}{% endif %}"
+           class="btn btn-outline-secondary flex-shrink-0 {% if request.GET.new_only == '1' %}active{% endif %}"
+           title="Показать только новые">
+            <i class="bi bi-bell"></i>
+        </a>
+        {% endif %}
+        <a href="{% url 'questions:question_list' %}"
+           class="btn btn-outline-secondary flex-shrink-0"
+           title="Сбросить фильтры">
+            <i class="bi bi-arrow-counterclockwise"></i>
+        </a>
+    </div>
+</form>
+            </div>
+        </div>
+
+        {# Таблица вопросов #}
+        <div class="card shadow-sm rounded-3 border-0 bg-gray-200">
+            <div class="card-body p-0 ">
+                <div class="table-responsive rounded-3 border-0 ">
+                    <table class="table table-hover align-middle mb-0 bg-transparent">
+                        <thead class="bg-gray-170" style="--bs-table-bg: transparent;">
+                            <tr>
+                                <th scope="col" style="width: 5%;">#</th>
+                                <th scope="col" style="width: 40%;">Вопрос</th>
+                                <th scope="col" style="width: 20%;">Тема</th>
+                                <th scope="col" style="width: 15%;">Тип ВС</th>
+                                <th scope="col" style="width: 8%;">Изменения</th>
+                                <th scope="col" style="width: 10%;">Статус</th>
+                                <th scope="col" style="width: 10%;" class="text-end">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-gray-200" style="--bs-table-bg: transparent;">
+                            {% for question in page_obj %}
+                                <tr>
+                                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td>
+                                        <a href="{% url 'questions:question_detail' question.pk %}?back={{ request.get_full_path|urlencode }}" class="text-decoration-none text-dark">
+                                            {{ question.question|truncatechars:80 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ question.theme.name }}</td>
+                                    <td>{{ question.get_ac_type_display }}</td>
+                                    <td>
+                                        {% if question.is_new %}
+                                            <span class="badge bg-warning text-dark">new</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            {# 1. Основной статус #}
+                                            {% if question.is_published %}
+                                                <span class="status-circle bg-success" title="Основной вопрос Опубликован">P</span>
+                                            {% else %}
+                                                <span class="status-circle bg-warning" title="Основной вопрос Неопубликован">U</span>
+                                            {% endif %}
+
+                                            {# 2. Черновик #}
+                                            {% if question.drafts.exists %}
+                                                <span class="status-circle bg-secondary" title="Есть черновик">D</span>
+                                            {% endif %}
+
+                                            {# 3. Перефраз #}
+                                            {% with paraphrase=question.paraphrases.first %}
+                                                {% if paraphrase %}
+                                                    {% if paraphrase.is_published %}
+                                                        <span class="status-circle bg-info" title="Перефраз Опубликован">P</span>
+                                                    {% else %}
+                                                        <span class="status-circle bg-info" title="Перефраз Неопубликован">U</span>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endwith %}
+
+                                            {# 4. Архив (обычно не отображается в списке, но оставим на случай) #}
+                                            {% if question.is_archived %}
+                                                <span class="status-circle bg-secondary" title="Архивный">A</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if perms.questions.can_publish %}
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-{% if question.is_published %}warning{% else %}success{% endif %}"
+                                                title="{% if question.is_published %}Снять с публикации{% else %}Опубликовать{% endif %}"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#actionModal"
+                                                data-action-url="{% url 'questions:publish' question.pk %}"
+                                                data-action-title="{% if question.is_published %}Снять с публикации{% else %}Опубликовать вопрос{% endif %}"
+                                                data-action-text="{% if question.is_published %}Вы уверены, что хотите снять вопрос с публикации?{% else %}Вы уверены, что хотите опубликовать этот вопрос?{% endif %} Необходим комментарий."
+                                                data-btn-class="{% if question.is_published %}btn-warning{% else %}btn-success{% endif %}"
+                                                data-btn-text="{% if question.is_published %}Снять с публикации{% else %}Опубликовать{% endif %}"
+                                                data-question-text="{{ question.question|truncatechars:100 }}"
+                                                data-redirect-to="list">
+                                            <i class="bi bi-{% if question.is_published %}eye-slash{% else %}eye{% endif %}"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if perms.questions.delete_question %}
+                                        <form method="post" action="{% url 'questions:question_delete' question.pk %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Это не обратимое действие, вы уверены, что хотите удалить вопрос:\n' +
+                                                     '{{question.question}}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        Вопросов не найдено. Попробуйте изменить параметры фильтрации.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# Пагинация #}
+            {% if page_obj.has_other_pages %}
+                <div class="card-footer d-flex justify-content-between align-items-center py-3 bg-gray-170">
+                    <div class="text-muted small">
+                        Показано {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ page_obj.paginator.count }}
+                    </div>
+                    <nav aria-label="Навигация по страницам">
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link bg-transparent border-0" href="?page=1&{{ query_string }}">
+                                        <i class="bi bi-chevron-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link bg-transparent border-0" href="?page={{ page_obj.previous_page_number }}&{{ query_string }}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-double-left"></i></span></li>
+                                <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-left"></i></span></li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active" aria-current="page"><span class="page-link bg-transparent border-0">{{ num }}</span></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link bg-transparent border-0" href="?page={{ num }}&{{ query_string }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link bg-transparent border-0" href="?page={{ page_obj.next_page_number }}&{{ query_string }}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link bg-transparent border-0" href="?page={{ page_obj.paginator.num_pages }}&{{ query_string }}">
+                                        <i class="bi bi-chevron-double-right"></i>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-right"></i></span></li>
+                                <li class="page-item disabled"><span class="page-link bg-transparent border-0"><i class="bi bi-chevron-double-right"></i></span></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+        </div>
+
+    {% endif %}
+</div>
+
+{% include 'questions/includes/publish_modal.html' %}
+<script src="/static/js/q_detail.js"></script>
+{% endblock %}

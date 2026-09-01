@@ -1,0 +1,387 @@
+{% extends "core/base.html" %}
+{% load django_bootstrap5 %}
+{% load question_filters %}
+
+{% block title %}Просмотр вопроса #{{ question.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4" id="head">
+    {# Хлебные крошки #}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{{ back_url }}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5" aria-current="page">Вопрос #{{ question.id }}</li>
+        </ol>
+    </nav>
+
+    {# Вкладки #}
+    <ul class="nav nav-tabs mb-0" id="questionTabs" role="tablist">
+    {# Вкладка Вопрос #}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active tab-question-{{ question|get_border_color }}"
+                id="question-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#question-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-question-circle"></i> Вопрос
+            {% if not question.is_published %}
+                <span class="ms-1 d-inline-block bg-warning rounded-circle" style="width: 8px; height: 8px;" title="Не опубликован"></span>
+            {% endif %}
+            {% if question.is_new %}
+                <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
+            {% endif %}
+        </button>
+    </li>
+
+    {# Вкладка Черновик #}
+    {% if draft %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link tab-draft"
+                id="draft-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#draft-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-pencil-square"></i> Черновик
+            {% if draft.is_new %}
+                <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
+            {% endif %}
+        </button>
+    </li>
+    {% endif %}
+
+    {# Вкладка Перефраз #}
+    {% if paraphrase %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link tab-paraphrase"
+                id="paraphrase-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#paraphrase-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-arrow-repeat"></i> Перефраз
+            {% if not paraphrase.is_published %}
+                <span class="ms-1 d-inline-block bg-warning rounded-circle" style="width: 8px; height: 8px;" title="Не опубликован"></span>
+            {% endif %}
+            {% if paraphrase.is_new %}
+                <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
+            {% endif %}
+        </button>
+    </li>
+    {% endif %}
+
+    {# Вкладка Архив #}
+    {% if question.previous_version %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link tab-archive"
+                id="archive-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#archive-pane"
+                type="button"
+                role="tab">
+            <i class="bi bi-archive"></i> Архив
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+    {# Содержимое вкладок #}
+    <div class="tab-content">
+        {# Вкладка Вопрос #}
+        <div class="tab-pane fade show active" id="question-pane" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-9 pe-0">
+                    {% include "questions/includes/question_card.html" with item=question type="question" %}
+                </div>
+                <div class="col-lg-3 ps-0">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light py-1">
+                            <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-5">ID</dt>
+                                <dd class="col-sm-7">{{ question.id }}</dd>
+                                <dt class="col-sm-5">Тема</dt>
+                                <dd class="col-sm-7">{{ question.theme.name }}</dd>
+                                <dt class="col-sm-5">Тип ВС</dt>
+                                <dd class="col-sm-7">{{ question.get_ac_type_display }}</dd>
+                                <dt class="col-sm-5">Тип вопроса</dt>
+                                <dd class="col-sm-7">{{ question.get_q_kind_display }}</dd>
+                                <dt class="col-sm-5">Вес</dt>
+                                <dd class="col-sm-7">{{ question.q_weight }}</dd>
+                                <dt class="col-sm-5">Создан</dt>
+                                <dd class="col-sm-7">{{ question.created_at|date:"d.m.Y H:i" }}</dd>
+                                <dt class="col-sm-5">Обновлён</dt>
+                                <dd class="col-sm-7">{{ question.updated_at|date:"d.m.Y H:i" }}</dd>
+                                {% if question.published_at %}
+                                    <dt class="col-sm-5">Опубликован</dt>
+                                    <dd class="col-sm-7">{{ question.published_at|date:"d.m.Y H:i" }}</dd>
+                                {% endif %}
+                                <dt class="col-sm-5">Статус</dt>
+                                <dd class="col-sm-7">
+                                    {% if question.is_published %}
+                                        <span class="badge bg-success">Опубликован</span>
+                                    {% elif question.is_archived %}
+                                        <span class="badge bg-secondary">Архивный</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Не опубликован</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Вкладка Черновик #}
+        {% if draft %}
+            <div class="tab-pane fade" id="draft-pane" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-9 pe-0">
+                        {% include "questions/includes/question_card.html" with item=draft type="draft" %}
+                    </div>
+                    <div class="col-lg-3 ps-0">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-light py-1">
+                                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-5">ID</dt>
+                                    <dd class="col-sm-7">{{ draft.id }}</dd>
+                                    <dt class="col-sm-5">Создан</dt>
+                                    <dd class="col-sm-7">{{ draft.created_at|date:"d.m.Y H:i" }}</dd>
+                                    <dt class="col-sm-5">Обновлён</dt>
+                                    <dd class="col-sm-7">{{ draft.updated_at|date:"d.m.Y H:i" }}</dd>
+                                    <dt class="col-sm-5">Статус</dt>
+                                    <dd class="col-sm-7">
+                                        <span class="badge bg-dark">Черновик</span>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+
+
+
+        {# Вкладка Перефраз #}
+        {% if paraphrase %}
+            <div class="tab-pane fade" id="paraphrase-pane" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-9 pe-0">
+                        {% include "questions/includes/question_card.html" with item=paraphrase type="paraphrase" %}
+                    </div>
+                    <div class="col-lg-3 ps-0">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-light py-1">
+                                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-5">ID</dt>
+                                    <dd class="col-sm-7">{{ paraphrase.id }}</dd>
+                                    <dt class="col-sm-5">Создан</dt>
+                                    <dd class="col-sm-7">{{ paraphrase.created_at|date:"d.m.Y H:i" }}</dd>
+                                    <dt class="col-sm-5">Обновлён</dt>
+                                    <dd class="col-sm-7">{{ paraphrase.updated_at|date:"d.m.Y H:i" }}</dd>
+                                    <dt class="col-sm-5">Статус</dt>
+                                    <dd class="col-sm-7">
+                                        {% if paraphrase.is_published %}
+                                            <span class="badge bg-success">Опубликован</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Не опубликован</span>
+                                        {% endif %}
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+
+        {% if question.previous_version %}
+    <div class="tab-pane fade" id="archive-pane" role="tabpanel">
+        <div class="row">
+            <div class="col-lg-9 pe-0">
+                {% include "questions/includes/question_card.html" with item=question.previous_version type="archive" parent_pk=question.pk %}
+            </div>
+            <div class="col-lg-3 ps-0">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-light py-1">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Информация</h6>
+                    </div>
+                    <div class="card-body py-2">
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-5">ID</dt>
+                            <dd class="col-sm-7">{{ question.previous_version.id }}</dd>
+                            <dt class="col-sm-5">Создан</dt>
+                            <dd class="col-sm-7">{{ question.previous_version.created_at|date:"d.m.Y H:i" }}</dd>
+                            <dt class="col-sm-5">Статус</dt>
+                            <dd class="col-sm-7"><span class="badge bg-secondary">Архивный</span></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+
+    </div>
+
+    {# История и комментарии #}
+    <div class="row mt-4" id="history">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> История</h5>
+                    <div class="d-flex gap-1 align-items-center flex-wrap">
+                        {# Кнопка очистки истории #}
+                        <form method="post" action="{% url 'history:clear_history' question.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Очистить всю историю вопроса?\n\nЭто действие необратимо.')">
+                                <i class="bi bi-eraser"></i> Очистить историю
+                            </button>
+                        </form>
+                        {# Поиск по пользователю #}
+                        <form method="get" action="?{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}#history" class="d-flex gap-1">
+                            <input type="text" name="user" class="form-control form-control-sm"
+                                   placeholder="Поиск по пользователю..."
+                                   value="{{ request.GET.user|default:'' }}"
+                                   style="width: 180px;">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                            {% if request.GET.user %}
+                                <a href="?{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}#history" class="btn btn-sm btn-outline-danger" title="Сбросить фильтр">
+                                    <i class="bi bi-x-circle"></i>
+                                </a>
+                            {% endif %}
+                        </form>
+                        {# Фильтр по действиям #}
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=all#history"
+                               class="btn btn-outline-secondary {% if not request.GET.action or request.GET.action == 'all' %}active{% endif %}">Все</a>
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=published#history"
+                               class="btn btn-outline-secondary {% if request.GET.action == 'published' %}active{% endif %}">
+                                <span class="badge bg-success">Публикация</span></a>
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=unpublished#history"
+                               class="btn btn-outline-secondary {% if request.GET.action == 'unpublished' %}active{% endif %}">
+                                <span class="badge bg-warning text-dark">Снятие</span></a>
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=created#history"
+                               class="btn btn-outline-secondary {% if request.GET.action == 'created' %}active{% endif %}">
+                                <span class="badge bg-info">Создание</span></a>
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}action=updated_field#history"
+                               class="btn btn-outline-secondary {% if request.GET.action == 'updated_field' %}active{% endif %}">
+                                <span class="badge bg-primary">Изменение</span></a>
+                        </div>
+                        {# Сортировка #}
+                        <div class="btn-group btn-group-sm">
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}sort=date_desc#history"
+                               class="btn btn-outline-secondary {% if request.GET.sort == 'date_desc' or not request.GET.sort %}active{% endif %}"
+                               title="Сначала новые"><i class="bi bi-arrow-down"></i></a>
+                            <a href="?{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}sort=date_asc#history"
+                               class="btn btn-outline-secondary {% if request.GET.sort == 'date_asc' %}active{% endif %}"
+                               title="Сначала старые"><i class="bi bi-arrow-up"></i></a>
+                        </div>
+                    </div>
+                </div>
+                {# Таблица истории #}
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 18%;">Пользователь</th>
+                                    <th style="width: 10%;">Действие</th>
+                                    <th style="width: 50%;">Комментарий</th>
+                                    <th style="width: 12%;">Дата</th>
+                                    <th style="width: 10%;">Тип</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if history %}
+                                    {% for h in history %}
+                                        <tr>
+                                            <td>
+                                                <small>
+                                                    {% if h.user %}
+                                                        {{ h.user.first_name }} {{ h.user.last_name }}
+                                                        <br><span class="text-muted">{{ h.user.email }}</span>
+                                                    {% else %}
+                                                        {{ h.user_name }}
+                                                        <br><span class="text-muted">Пользователь удалён</span>
+                                                    {% endif %}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                {% for action in h.actions.all %}
+                                                    <span class="badge bg-{{ action.action_type|get_action_color }}">{{ action.get_action_type_display }}</span>
+                                                    {% if action.field_name %}<br><small class="text-muted">→ {{ action.field_name }}</small>{% endif %}
+                                                {% endfor %}
+                                            </td>
+                                            <td style="max-width: 350px;">
+                                                {% if h.comments.exists %}
+                                                    {% for comment in h.comments.all %}
+                                                        <div class="comment-item">
+                                                            <div class="d-flex align-items-start gap-2">
+                                                                <textarea readonly class="comment-textarea" rows="3">{{ comment.text|striptags }}</textarea>
+                                                                {% if comment == last_comment and comment.user == request.user %}
+                                                                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0"
+                                                                            data-bs-toggle="modal" data-bs-target="#actionModal"
+                                                                            data-action-url="{% url 'history:comment_update' comment.pk %}"
+                                                                            data-action-title="Редактировать комментарий"
+                                                                            data-action-text="Измените текст комментария:"
+                                                                            data-btn-class="btn-primary" data-btn-text="Сохранить"
+                                                                            data-comment-text="{{ comment.text|escape }}"
+                                                                            title="Редактировать комментарий">
+                                                                        <i class="bi bi-pencil"></i>
+                                                                    </button>
+                                                                {% endif %}
+                                                            </div>
+                                                            <button class="comment-toggle-btn" type="button" style="display: none;">Читать далее</button>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Нет комментариев</span>
+                                                {% endif %}
+                                            </td>
+                                            <td><small>{{ h.created_at|date:"d.m.Y H:i" }}</small></td>
+                                            <td><span class="badge bg-light text-dark">{{ h.get_entity_type_display }}</span></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>История изменений отсутствует.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Модальное окно #}
+{% include 'questions/includes/publish_modal.html' %}
+
+<script src="/static/js/q_detail.js"></script>
+{% endblock %}

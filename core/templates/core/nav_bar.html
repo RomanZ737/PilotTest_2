@@ -1,13 +1,13 @@
 {% load user_tags %}
 
-<div class="bg-white border-bottom box-shadow p-3 px-md-4 mb-3 " >
+<div class="border-bottom box-shadow p-3 px-md-4 mb-3">
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between ">
-        <h5 class="my-0 font-weight-normal">SPAM SERVICE</h5>
+    <div class="d-flex flex-wrap align-items-center justify-content-between">
+        <h5 class="my-0 font-weight-normal">Pilot Test</h5>
         {% if user.is_authenticated %}
         <nav class="d-flex align-items-center gap-2">
             <div class="dropdown">
-                <a class="btn btn-outline-primary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <a class="btn btn-outline-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     {% if user.first_name or user.last_name %}
                         {{ user.first_name }} {{ user.last_name }}
                     {% else %}
@@ -15,7 +15,7 @@
                     {% endif %}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end text-start">
-                    <li><a class="dropdown-item" href="{% url 'users:user_update' %}">Профиль</a></li>
+                    <li><a class="dropdown-item" href="{% url 'users:profile' %}">Профиль</a></li>
                     <li>
                         <form method="post" action="{% url 'users:logout' %}">
                             {% csrf_token %}
@@ -25,32 +25,37 @@
                 </ul>
             </div>
         </nav>
-    </div>
-
-    <!-- Нижняя строка: кнопки навигации, выровненные влево -->
-    <div class="d-flex flex-wrap align-items-center gap-2">
-        <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'core:home' %}">Главная</a>
-        <a class="btn {% if request.resolver_match.view_name == 'mailing:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'mailing:list' %}">Рассылки</a>
-        <a class="btn {% if request.resolver_match.view_name == 'recipient:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'recipient:list' %}">Получатели</a>
-        <a class="btn {% if request.resolver_match.view_name == 'message:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'message:list' %}">Сообщения</a>
-        <a class="btn {% if request.resolver_match.view_name == 'history:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'history:list' %}">История</a>
-        <a class="btn {% if request.resolver_match.view_name == 'mailing:create' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'mailing:create' %}" >+ Создать рассылку</a>
-        <a class="btn {% if request.resolver_match.view_name == 'recipient:create' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'recipient:create' %}" >+ Создать получателя</a>
-        <a class="btn {% if request.resolver_match.view_name == 'message:create' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'message:create' %}" >+ Создать сообщение</a>
-        <a class="btn {% if request.resolver_match.view_name == 'stats:stats' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'stats:stats' %}">Статистика</a>
-        {% if request.user|has_group:'Managers' %}
-        <a class="btn {% if request.resolver_match.view_name == 'users:list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-           href="{% url 'users:list' %}" >Пользователи</a>
         {% endif %}
     </div>
+
+    {% if user.is_authenticated %}
+    <!-- Нижняя строка: кнопки навигации -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-light{% else %}btn-outline-light{% endif %}"
+           href="{% url 'core:home' %}">Главная</a>
+        {% if perms.users.view_customuser %}
+            <a class="btn {% if request.resolver_match.view_name == 'users:list' or request.resolver_match.view_name == 'users:group_list' or request.resolver_match.view_name == 'users:history' %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'users:list' %}">Пилоты
+                {% if new_users_count %}
+                    <span class="badge bg-warning text-dark ms-1">new</span>
+                {% endif %}
+            </a>
+        {% endif %}
+
+        {% if perms.questions.view_question %}
+            <a class="btn {% if request.resolver_match.view_name == 'questions:question_list' or request.resolver_match.view_name == 'questions:themes_list' or request.resolver_match.view_name == 'questions:history' %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'questions:question_list' %}{% if new_questions_exist or new_themes_exist %}?new_only=1{% endif %}">
+                Вопросы
+                {% if new_questions_exist or new_themes_exist or history_has_new %}
+                    <span class="badge bg-warning text-dark ms-1">new</span>
+                {% endif %}
+            </a>
+        {% endif %}
+        <a class="btn ms-auto mt-2 {% if request.resolver_match.app_name == 'description' %}btn-light{% else %}btn-outline-light{% endif %}"
+           href="{% url 'description:index' %}">
+            <i class="bi bi-book"></i> Описание
+        </a>
+    </div>
     {% endif %}
+
 </div>

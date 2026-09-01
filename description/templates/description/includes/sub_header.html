@@ -1,0 +1,12 @@
+{% load static %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div class="d-flex gap-2">
+        {% for section in sections %}
+            <a class="btn {% if current_slug == section.slug %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'description:detail' section.slug %}">
+                <h5 class="mb-0">{{ section.title }}</h5>
+            </a>
+        {% endfor %}
+    </div>
+</div>

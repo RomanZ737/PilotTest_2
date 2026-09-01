@@ -1,0 +1,336 @@
+{% extends "core/base.html" %}
+{% load django_bootstrap5 %}
+{% load static %}
+
+{% block title %}Редактирование черновика{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    {# Хлебные крошки #}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb align-items-center">
+            <li class="breadcrumb-item">
+                <a href="{% url 'questions:question_detail' draft.original_question.pk %}?tab=draft" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </li>
+            <li class="breadcrumb-item active fs-5">Редактирование черновика</li>
+        </ol>
+    </nav>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        {# Карточка черновика #}
+        <div class="card border-dark border-3 shadow-sm mb-4">
+
+            {# Шапка #}
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square text-dark fs-5"></i>
+                    <span class="fw-bold">Черновик</span>
+                </div>
+                <div>
+                    <span class="badge bg-warning text-dark">Черновик</span>
+                </div>
+            </div>
+
+            <div class="card-body">
+
+                {# Изображение вопроса #}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {% bootstrap_field form.question_img %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 text-center">
+                        {% if form.instance.question_img %}
+                            <img id="question-img-preview"
+                                 src="{{ form.instance.question_img.url }}"
+                                 alt="Превью изображения вопроса"
+                                 class="img-fluid rounded img-zoomable d-block mx-auto"
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain;"
+                                 onclick="this.classList.toggle('zoomed')">
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2"
+                                    id="remove-question-img"
+                                    onclick="removeImage('id_question_img', 'question-img-preview', 'remove-question-img')">
+                                <i class="bi bi-trash"></i> Удалить изображение
+                            </button>
+                        {% else %}
+                            <img id="question-img-preview"
+                                 src="#"
+                                 alt="Превью изображения вопроса"
+                                 class="img-fluid rounded img-zoomable d-block mx-auto"
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain; display: none;"
+                                 onclick="this.classList.toggle('zoomed')">
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2"
+                                    id="remove-question-img" style="display: none;"
+                                    onclick="removeImage('id_question_img', 'question-img-preview', 'remove-question-img')">
+                                <i class="bi bi-trash"></i> Удалить изображение
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Текст вопроса #}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        {% bootstrap_field form.question %}
+                    </div>
+                </div>
+
+                {# Тема, тип ВС, тип вопроса #}
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.theme.id_for_label }}" class="form-label">Тема вопроса</label>
+                        <div class="input-group">
+                            <select name="{{ form.theme.name }}"
+                                    id="{{ form.theme.id_for_label }}"
+                                    class="form-select"
+                                    data-theme-select="true"
+                                    {% if form.theme.field.required %}required{% endif %}>
+                                <option value="">---------</option>
+                                {% for value, label in form.theme.field.choices %}
+                                    {% if value %}
+                                        <option value="{{ value }}"
+                                            {% if form.theme.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" id="add-theme-btn"
+                                    data-bs-toggle="modal" data-bs-target="#themeModal"
+                                    data-create-url="{% url 'questions:theme_create' %}"
+                                    title="Создать новую тему">
+                                <i class="bi bi-plus-circle"></i>
+                            </button>
+                        </div>
+                        {% if form.theme.errors %}
+                            <div class="invalid-feedback d-block">{{ form.theme.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {% bootstrap_field form.ac_type %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {% bootstrap_field form.q_kind %}
+                    </div>
+                </div>
+                {# Блок ответов #}
+                <div class="mt-4 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold text-primary">
+                                <i class="bi bi-list-check me-2"></i>Варианты ответов
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-answer-btn">
+                                <i class="bi bi-plus-lg"></i> Добавить ответ
+                            </button>
+                        </div>
+                        <div class="card-body p-2">
+
+                            {% if answer_formset.non_form_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in answer_formset.non_form_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <div id="answers-container">
+                                {% for answer_form in answer_formset %}
+                                    <div class="answer-form-row list-group-item d-flex align-items-center gap-2 mb-1 rounded">
+                                        <span class="badge bg-secondary rounded-pill answer-number">{{ forloop.counter }}</span>
+
+                                        <input type="text"
+                                               name="{{ answer_form.answer.html_name }}"
+                                               value="{{ answer_form.answer.value|default:'' }}"
+                                               class="form-control form-control-sm flex-grow-1"
+                                               placeholder="Текст ответа...">
+
+                                        <input type="hidden"
+                                               name="{{ answer_form.is_correct.html_name }}"
+                                               value="{% if answer_form.is_correct.value %}true{% endif %}"
+                                               class="correct-input-hidden">
+                                        <span class="badge correct-badge
+                                               {% if answer_form.is_correct.value %}bg-success{% else %}badge-outline{% endif %}"
+                                              data-type="radio"
+                                              role="button"
+                                              title="Правильный ответ">
+                                            <i class="bi bi-check-lg"></i>
+                                        </span>
+
+                                        {{ answer_form.id }}
+                                        <input type="hidden" name="{{ answer_form.DELETE.html_name }}" class="delete-input" value="">
+
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-answer-btn" title="Удалить ответ">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div id="empty-form-template" style="display: none;">
+                                <div class="answer-form-row list-group-item d-flex align-items-center gap-2 mb-1 rounded">
+                                    <span class="badge bg-secondary rounded-pill answer-number">__NUM__</span>
+                                    <input type="text" name="answers-__prefix__-answer"
+                                           class="form-control form-control-sm flex-grow-1"
+                                           placeholder="Текст ответа..." disabled>
+                                    <input type="hidden" name="answers-__prefix__-is_correct" value="" class="correct-input-hidden" disabled>
+                                    <span class="badge badge-outline correct-badge" data-type="radio" role="button" title="Правильный ответ">
+                                        <i class="bi bi-check-lg"></i>
+                                    </span>
+                                    <input type="hidden" name="answers-__prefix__-id" value="" disabled>
+                                    <input type="hidden" name="answers-__prefix__-DELETE" class="delete-input" value="" disabled>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-answer-btn" title="Удалить ответ">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {# Вес и ограничение по времени #}
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {% bootstrap_field form.q_weight %}
+                    </div>
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
+                        {% bootstrap_field form.is_time_limited %}
+                    </div>
+                </div>
+
+                {# Изображение пояснения #}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {% bootstrap_field form.comment_img %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 text-center">
+                        {% if form.instance.comment_img %}
+                            <img id="comment-img-preview"
+                                 src="{{ form.instance.comment_img.url }}"
+                                 alt="Превью изображения пояснения"
+                                 class="img-fluid rounded img-zoomable d-block mx-auto"
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain;"
+                                 onclick="this.classList.toggle('zoomed')">
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2"
+                                    id="remove-comment-img"
+                                    onclick="removeImage('id_comment_img', 'comment-img-preview', 'remove-comment-img')">
+                                <i class="bi bi-trash"></i> Удалить изображение
+                            </button>
+                        {% else %}
+                            <img id="comment-img-preview"
+                                 src="#"
+                                 alt="Превью изображения пояснения"
+                                 class="img-fluid rounded img-zoomable d-block mx-auto"
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain; display: none;"
+                                 onclick="this.classList.toggle('zoomed')">
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2"
+                                    id="remove-comment-img" style="display: none;"
+                                    onclick="removeImage('id_comment_img', 'comment-img-preview', 'remove-comment-img')">
+                                <i class="bi bi-trash"></i> Удалить изображение
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Пояснение #}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        {% bootstrap_field form.comment_text %}
+                    </div>
+                </div>
+
+
+
+                {# Комментарий к сохранению #}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <label for="draftComment" class="form-label">Комментарий <span class="text-danger">*</span></label>
+                        <textarea name="comment" id="draftComment" class="form-control" rows="2"
+                            placeholder="Опишите, что изменилось..."></textarea>
+                    </div>
+                </div>
+
+            </div>  {# конец card-body #}
+        </div>  {# конец card #}
+
+        {# Кнопки действий #}
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'questions:question_detail' draft.original_question.pk %}?tab=draft" class="btn btn-outline-light">
+                <i class="bi bi-x-circle"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-warning">
+                <i class="bi bi-check-circle"></i> Сохранить черновик
+            </button>
+        </div>
+
+        {{ answer_formset.management_form }}
+
+    </form>
+
+    {# Шаблон для JS-клонирования #}
+    <div id="empty-form-template" style="display: none;">
+        <div class="answer-form-row list-group-item d-flex align-items-center gap-2 mb-1 rounded">
+            <span class="badge bg-secondary rounded-pill answer-number">__NUM__</span>
+            <input type="text" name="answers-__prefix__-answer"
+                   class="form-control form-control-sm flex-grow-1"
+                   placeholder="Текст ответа..." disabled>
+            <input type="hidden" name="answers-__prefix__-is_correct" value="" class="correct-input-hidden" disabled>
+            <span class="badge badge-outline correct-badge" data-type="radio" role="button" title="Правильный ответ">
+                <i class="bi bi-check-lg"></i>
+            </span>
+            <input type="hidden" name="answers-__prefix__-id" value="" disabled>
+            <input type="hidden" name="answers-__prefix__-DELETE" class="delete-input" value="" disabled>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-answer-btn" title="Удалить ответ">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    {# Модальное окно создания темы #}
+    <div class="modal fade" id="themeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Создать тему</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="theme-create-form">
+                    {% csrf_token %}
+                    <div class="modal-body" id="theme-modal-body">
+                        {% include 'questions/includes/theme_modal_form.html' with form=theme_form %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Создать
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+<script src="/static/js/q_create.js"></script>
+<script src="/static/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    tinymce.init({
+        selector: '#id_comment_text',
+        promotion: false,
+        branding: false,
+        height: 250,
+        plugins: 'lists, link',
+        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline | forecolor backcolor | bullist numlist outdent indent | alignleft aligncenter alignright alignjustify | removeformat',
+    });
+</script>
+{% endblock %}

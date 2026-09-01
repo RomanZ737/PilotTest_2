@@ -1,0 +1,188 @@
+/* static/css/custom.css */
+
+.bg-gray-128 {
+    background-color: rgb(128, 128, 128) !important;
+}
+
+.bg-gray-170 {
+    background-color: rgb(170, 170, 170) !important;
+}
+
+.bg-gray-190 {
+    background-color: rgb(190, 190, 190) !important;
+}
+
+.bg-gray-200 {
+    background-color: rgb(200, 200, 200) !important;
+}
+
+.bg-glass {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(4px);
+}
+
+.fs-7 {
+    font-size: 0.75rem !important;
+}
+
+.fs-8 {
+    font-size: 0.65rem !important;
+}
+
+/* ============================================
+   Стили для комментариев в истории
+   ============================================ */
+
+.comment-textarea {
+    width: 100%;
+    border: none;
+    background: transparent;
+    resize: none;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    cursor: default;
+    font-family: inherit;
+    color: inherit;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.comment-textarea:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.comment-item {
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    margin-bottom: 0.25rem;
+}
+
+.comment-toggle-btn {
+    font-size: 0.75rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.comment-toggle-btn:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+
+/* Увеличение изображения по клику */
+.img-zoomable {
+    cursor: zoom-in;
+    transition: transform 0.3s ease, max-width 0.3s ease, max-height 0.3s ease;
+}
+
+.img-zoomable.zoomed {
+    cursor: zoom-out;
+    max-width: 100% !important;
+    max-height: none !important;
+    transform: scale(1.05);
+}
+
+.badge-outline {
+    background-color: transparent !important;
+    border: 1px solid #6c757d;
+    color: #6c757d;
+}
+
+.answer-form-row {
+    transition: background-color 0.2s ease;
+}
+
+/* ============================================
+   Стили вкладок на детальной странице
+   ============================================ */
+.nav-tabs {
+    border-bottom: none !important;
+    gap: 4px;
+}
+
+.nav-tabs .nav-link {
+    color: rgba(255, 255, 255, 0.6) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 2px solid rgba(255, 255, 255, 0.25) !important;
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Активная — success (опубликован) */
+.nav-tabs .nav-link.active.tab-question-success {
+    background: rgba(25, 135, 84, 0.25) !important;
+    border-color: #198754 !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(25, 135, 84, 0.3);
+}
+
+/* Активная — warning (не опубликован) */
+.nav-tabs .nav-link.active.tab-question-warning {
+    background: rgba(255, 193, 7, 0.25) !important;
+    border-color: #ffc107 !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Активная — secondary (архивный) */
+.nav-tabs .nav-link.active.tab-question-secondary {
+    background: rgba(108, 117, 125, 0.25) !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* Активная — черновик */
+.nav-tabs .nav-link.active.tab-draft {
+    background: rgba(33, 37, 41, 0.35) !important;
+    border-color: #212529 !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(33, 37, 41, 0.4);
+}
+
+/* Активная — перефраз */
+.nav-tabs .nav-link.active.tab-paraphrase {
+    background: rgba(13, 202, 240, 0.25) !important;
+    border-color: #0dcaf0 !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(13, 202, 240, 0.3);
+}
+
+/* Активная — архив */
+.nav-tabs .nav-link.active.tab-archive {
+    background: rgba(108, 117, 125, 0.25) !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    box-shadow: 0 -2px 8px rgba(108, 117, 125, 0.3);
+}
+
+.status-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #fff;
+    margin-right: 4px;
+    vertical-align: middle;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+}
+.status-circle.bg-warning {
+    color: #212529;
+}
