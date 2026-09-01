@@ -120,7 +120,10 @@
         <select name="status" id="status" class="form-select">
             <option value="">Все</option>
             <option value="published" {% if request.GET.status == 'published' %}selected{% endif %}>Опубликован</option>
-            <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Не опубликован</option>
+            <option value="unpublished" {% if request.GET.status == 'unpublished' %}selected{% endif %}>Не опубликован</option>
+            <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Черновик</option>
+            <option value="paraphrase" {% if request.GET.status == 'paraphrase' %}selected{% endif %}>Перефраз</option>
+            <option value="archived" {% if request.GET.status == 'archived' %}selected{% endif %}>Архив</option>
         </select>
     </div>
 
@@ -203,9 +206,8 @@
                                                 {% endif %}
                                             {% endwith %}
 
-                                            {# 4. Архив (обычно не отображается в списке, но оставим на случай) #}
-                                            {% if question.is_archived %}
-                                                <span class="status-circle bg-secondary" title="Архивный">A</span>
+                                            {% if question.previous_version %}
+                                                <span class="status-circle bg-secondary" title="Есть архивная версия">A</span>
                                             {% endif %}
                                         </div>
                                     </td>

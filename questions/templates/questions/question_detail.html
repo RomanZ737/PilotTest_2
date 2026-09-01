@@ -250,13 +250,15 @@
                     <h5 class="mb-0"><i class="bi bi-clock-history"></i> История</h5>
                     <div class="d-flex gap-1 align-items-center flex-wrap">
                         {# Кнопка очистки истории #}
-                        <form method="post" action="{% url 'history:clear_history' question.pk %}" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                    onclick="return confirm('Очистить всю историю вопроса?\n\nЭто действие необратимо.')">
-                                <i class="bi bi-eraser"></i> Очистить историю
-                            </button>
-                        </form>
+                        {% if request.user.is_superuser %}
+                            <form method="post" action="{% url 'history:clear_history' question.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Очистить всю историю вопроса?\n\nЭто действие необратимо.')">
+                                    <i class="bi bi-eraser"></i> Очистить историю
+                                </button>
+                            </form>
+                        {% endif %}
                         {# Поиск по пользователю #}
                         <form method="get" action="?{% if request.GET.action %}action={{ request.GET.action }}&{% endif %}#history" class="d-flex gap-1">
                             <input type="text" name="user" class="form-control form-control-sm"

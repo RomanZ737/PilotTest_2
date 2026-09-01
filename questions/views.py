@@ -31,7 +31,7 @@ class QuestionListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset().select_related('theme')
         queryset = queryset.prefetch_related('paraphrases', 'drafts')
-        queryset = queryset.filter(is_archived=False)
+        #queryset = queryset.filter(is_archived=False)
 
         available_themes = get_user_themes(self.request.user)
         queryset = queryset.filter(theme__in=available_themes)
@@ -53,9 +53,17 @@ class QuestionListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         status = self.request.GET.get('status')
         if status == 'published':
-            queryset = queryset.filter(is_published=True)
+            queryset = queryset.filter(is_published=True, is_archived=False)
+        elif status == 'unpublished':
+            queryset = queryset.filter(is_published=False, is_archived=False)
         elif status == 'draft':
-            queryset = queryset.filter(is_published=False)
+            queryset = queryset.filter(drafts__isnull=False, is_archived=False)
+        elif status == 'paraphrase':
+            queryset = queryset.filter(paraphrases__isnull=False, is_archived=False)
+        elif status == 'archived':
+            queryset = queryset.filter(previous_version__isnull=False, is_archived=False)
+        else:
+            queryset = queryset.filter(is_archived=False)
 
         return queryset.order_by('theme__name', 'question')
 
@@ -419,8 +427,10 @@ class ThemesListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             queryset = queryset.filter(
                 Q(name__icontains=search) | Q(description__icontains=search)
             )
-        queryset = queryset.annotate(question_count=Count('question'))
-        return queryset
+        queryset = queryset.annotate(
+            question_count=Count('question', filter=Q(question__is_archived=False))
+        )
+        return queryset.order_by('name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
