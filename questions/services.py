@@ -1,6 +1,6 @@
-from questions.models import Themes, Question
+from django.db.models import OuterRef, Exists, Subquery
+from questions.models import Themes, Question, QuestionDraft, QuestionParaphrase
 from users.models import UserTheme
-from django.db.models import Q, OuterRef, Exists, Subquery
 from history.models import TabView
 from django.utils import timezone
 
@@ -13,7 +13,6 @@ def reset_user_views(user):
 
     now = timezone.now()
 
-    # Все вопросы в доступных темах
     questions = Question.objects.filter(
         theme__in=themes,
         is_archived=False
@@ -26,7 +25,6 @@ def reset_user_views(user):
             defaults={'viewed_at': now}
         )
 
-    # Темы: для каждой темы берём последний вопрос и создаём TabView
     for theme in themes:
         TabView.objects.update_or_create(
             user=user,
@@ -38,57 +36,109 @@ def reset_user_views(user):
 
 
 def get_user_themes(user):
-    """Возвращает queryset тем, доступных пользователю.
-
-    - Суперпользователь/Администраторы: все темы
-    - Редакторы/Супер редакторы: только назначенные
-    - Остальные: None (нет доступа к базе вопросов)
-    """
     if not user.is_authenticated:
         return Themes.objects.none()
-
     if user.is_superuser or user.groups.filter(name='Администраторы').exists():
         return Themes.objects.all()
-
     if user.groups.filter(name__in=['Редактор', 'Супер Редактор']).exists():
         theme_ids = UserTheme.objects.filter(user=user).values_list('theme_id', flat=True)
         return Themes.objects.filter(id__in=theme_ids)
-
     return Themes.objects.none()
 
 
-def get_new_questions_queryset(user, queryset):
-    """
-    Возвращает queryset вопросов, которые пользователь ещё не просмотрел.
-    """
-    last_view_subquery = TabView.objects.filter(
-        user=user,
-        logical_question=OuterRef('pk'),
-        tab_type='question',
-        viewed_at__gte=OuterRef('updated_at')
-    )
-    queryset = queryset.filter(~Exists(last_view_subquery))
-    return queryset
-
-
 def has_new_questions(user):
-    """Возвращает True, если есть хотя бы один новый вопрос для пользователя."""
-
     available_themes = get_user_themes(user)
     if not available_themes.exists():
         return False
-    base_qs = Question.objects.filter(
+
+    # ID просмотренных вопросов (основных)
+    viewed_question_ids = set(
+        TabView.objects.filter(user=user, tab_type='question').values_list('logical_question_id', flat=True)
+    )
+
+    # ID просмотренных черновиков
+    viewed_draft_ids = set(
+        TabView.objects.filter(user=user, tab_type='draft').values_list('logical_question_id', flat=True)
+    )
+
+    # ID просмотренных перефразов
+    viewed_paraphrase_ids = set(
+        TabView.objects.filter(user=user, tab_type='paraphrase').values_list('logical_question_id', flat=True)
+    )
+
+    # Проверяем основные вопросы
+    questions = Question.objects.filter(
         theme__in=available_themes,
         is_archived=False
-    )
-    last_view_subquery = TabView.objects.filter(
-        user=user,
-        logical_question=OuterRef('pk'),
-        tab_type='question',
-        viewed_at__gte=OuterRef('updated_at')
-    )
-    return base_qs.filter(~Exists(last_view_subquery)).exists()
+    ).only('id', 'updated_at')
 
+    for q in questions:
+        if q.id not in viewed_question_ids:
+            return True
+
+    # Проверяем черновики
+    drafts = QuestionDraft.objects.filter(
+        original_question__theme__in=available_themes,
+        original_question__is_archived=False
+    ).only('id', 'original_question_id', 'updated_at')
+
+    for d in drafts:
+        if d.original_question_id not in viewed_draft_ids:
+            return True
+
+    # Проверяем перефразы
+    paraphrases = QuestionParaphrase.objects.filter(
+        original_question__theme__in=available_themes,
+        original_question__is_archived=False
+    ).only('id', 'original_question_id', 'updated_at')
+
+    for p in paraphrases:
+        if p.original_question_id not in viewed_paraphrase_ids:
+            return True
+
+    return False
+
+
+def get_new_questions_queryset(user, queryset):
+    # Получаем ID просмотренных вопросов, черновиков, перефразов
+    viewed_question_ids = set(
+        TabView.objects.filter(user=user, tab_type='question').values_list('logical_question_id', flat=True)
+    )
+    viewed_draft_ids = set(
+        TabView.objects.filter(user=user, tab_type='draft').values_list('logical_question_id', flat=True)
+    )
+    viewed_paraphrase_ids = set(
+        TabView.objects.filter(user=user, tab_type='paraphrase').values_list('logical_question_id', flat=True)
+    )
+
+    # ID вопросов, у которых нет просмотра основного вопроса
+    new_question_ids = set(
+        Question.objects.filter(is_archived=False)
+        .exclude(pk__in=viewed_question_ids)
+        .values_list('pk', flat=True)
+    )
+
+    # ID вопросов с новыми черновиками
+    new_draft_ids = set(
+        QuestionDraft.objects.filter(
+            original_question__is_archived=False
+        )
+        .exclude(original_question_id__in=viewed_draft_ids)
+        .values_list('original_question_id', flat=True)
+    )
+
+    # ID вопросов с новыми перефразами
+    new_paraphrase_ids = set(
+        QuestionParaphrase.objects.filter(
+            original_question__is_archived=False
+        )
+        .exclude(original_question_id__in=viewed_paraphrase_ids)
+        .values_list('original_question_id', flat=True)
+    )
+
+    all_new_ids = new_question_ids | new_draft_ids | new_paraphrase_ids
+
+    return queryset.filter(pk__in=all_new_ids)
 
 def has_new_themes(user):
     """Проверяет, есть ли новые темы для пользователя."""
@@ -108,7 +158,6 @@ def has_new_themes(user):
 
 
 def reset_question_views(user):
-    """Отмечает все доступные вопросы как просмотренные."""
     themes = get_user_themes(user)
     if not themes.exists():
         return
@@ -118,13 +167,35 @@ def reset_question_views(user):
         theme__in=themes,
         is_archived=False
     )
-    for question in questions:
+
+    for q in questions:
+        # Сбрасываем просмотр основного вопроса
         TabView.objects.update_or_create(
             user=user,
-            logical_question=question,
+            logical_question=q,
             tab_type='question',
             defaults={'viewed_at': now}
         )
+
+        # Сбрасываем просмотр черновика, если он есть
+        draft = q.drafts.order_by('-updated_at').first()
+        if draft:
+            TabView.objects.update_or_create(
+                user=user,
+                logical_question=q,
+                tab_type='draft',
+                defaults={'viewed_at': now}
+            )
+
+        # Сбрасываем просмотр перефраза, если он есть
+        paraphrase = q.paraphrases.first()
+        if paraphrase:
+            TabView.objects.update_or_create(
+                user=user,
+                logical_question=q,
+                tab_type='paraphrase',
+                defaults={'viewed_at': now}
+            )
 
 
 def reset_theme_views(user):

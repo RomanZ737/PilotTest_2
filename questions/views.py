@@ -93,15 +93,17 @@ class QuestionListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 is_new = False
 
                 if not last_view or last_view.viewed_at < question.updated_at:
-                    question.is_new = True
+                    is_new = True
                 elif draft:
-                    last_draft_view = TabView.objects.filter(user=self.request.user, logical_question=question,
-                                                         tab_type='draft').first()
+                    last_draft_view = TabView.objects.filter(
+                        user=self.request.user, logical_question=question, tab_type='draft'
+                    ).first()
                     if not last_draft_view or last_draft_view.viewed_at < draft.updated_at:
                         is_new = True
                 elif paraphrase:
-                    last_paraphrase_view = TabView.objects.filter(user=self.request.user, logical_question=question,
-                                                                  tab_type='paraphrase').first()
+                    last_paraphrase_view = TabView.objects.filter(
+                        user=self.request.user, logical_question=question, tab_type='paraphrase'
+                    ).first()
                     if not last_paraphrase_view or last_paraphrase_view.viewed_at < paraphrase.updated_at:
                         is_new = True
 

@@ -53,3 +53,16 @@ def unread_notifications(request):
         'history_has_new': history_has_new,
         'new_questions_count': new_questions_count,
     }
+
+
+def section_context(request):
+    """
+    Возвращает флаги активного раздела для nav_bar.
+    Другие контекстные процессоры могут добавлять сюда свои флаги.
+    """
+    view_name = request.resolver_match.view_name if request.resolver_match else ''
+    return {
+        'is_questions_section': view_name.startswith('questions:'),
+        'is_users_section': view_name.startswith('users:'),
+        'is_description_section': view_name.startswith('description:'),
+    }

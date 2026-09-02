@@ -34,8 +34,9 @@
         <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-light{% else %}btn-outline-light{% endif %}"
            href="{% url 'core:home' %}">Главная</a>
         {% if perms.users.view_customuser %}
-            <a class="btn {% if request.resolver_match.view_name == 'users:list' or request.resolver_match.view_name == 'users:group_list' or request.resolver_match.view_name == 'users:history' %}btn-light{% else %}btn-outline-light{% endif %}"
-               href="{% url 'users:list' %}">Пилоты
+            <a class="btn {% if is_users_section %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'users:list' %}">
+                Пилоты
                 {% if new_users_count %}
                     <span class="badge bg-warning text-dark ms-1">new</span>
                 {% endif %}
@@ -43,15 +44,15 @@
         {% endif %}
 
         {% if perms.questions.view_question %}
-            <a class="btn {% if request.resolver_match.view_name == 'questions:question_list' or request.resolver_match.view_name == 'questions:themes_list' or request.resolver_match.view_name == 'questions:history' %}btn-light{% else %}btn-outline-light{% endif %}"
-               href="{% url 'questions:question_list' %}{% if new_questions_exist or new_themes_exist %}?new_only=1{% endif %}">
+            <a class="btn {% if is_questions_section %}btn-light{% else %}btn-outline-light{% endif %}"
+               href="{% url 'questions:question_list' %}">
                 Вопросы
-                {% if new_questions_exist or new_themes_exist or history_has_new %}
+                {% if new_questions_count %}
                     <span class="badge bg-warning text-dark ms-1">new</span>
                 {% endif %}
             </a>
         {% endif %}
-        <a class="btn ms-auto mt-2 {% if request.resolver_match.app_name == 'description' %}btn-light{% else %}btn-outline-light{% endif %}"
+        <a class="btn ms-auto mt-2 {% if is_description_section %}btn-light{% else %}btn-outline-light{% endif %}"
            href="{% url 'description:index' %}">
             <i class="bi bi-book"></i> Описание
         </a>

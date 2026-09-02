@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 redirectInput.value = redirectTo;
             }
 
-
             const modalTitle = document.getElementById('actionModalLabel');
             if (modalTitle) {
                 modalTitle.textContent = title;
@@ -55,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            // Заполняем контекст — текст вопроса
             const questionText = button.getAttribute('data-question-text') || '';
             const questionInfo = document.getElementById('actionModalQuestion');
             if (questionInfo) {
@@ -83,49 +81,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-// ============================================
-// 4. Читать далее / Свернуть для комментариев
-// ============================================
-document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
-    const commentItem = textarea.closest('.comment-item');
-    if (!commentItem) return;
+    // ============================================
+    // 4. Читать далее / Свернуть для комментариев
+    // ============================================
+    document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
+        const commentItem = textarea.closest('.comment-item');
+        if (!commentItem) return;
 
-    const toggleBtn = commentItem.querySelector('.comment-toggle-btn');
-    if (!toggleBtn) return;
+        const toggleBtn = commentItem.querySelector('.comment-toggle-btn');
+        if (!toggleBtn) return;
 
-    // Вычисляем высоту 3 строк
-    const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 21;
-    const threeLinesHeight = lineHeight * 3;
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 21;
+        const threeLinesHeight = lineHeight * 3;
 
-    // Временно убираем rows, чтобы узнать полную высоту
-    const originalRows = textarea.rows;
-    textarea.rows = 0;
-    textarea.style.height = 'auto';
-    const fullHeight = textarea.scrollHeight;
+        const originalRows = textarea.rows;
+        textarea.rows = 0;
+        textarea.style.height = 'auto';
+        const fullHeight = textarea.scrollHeight;
 
-    // Возвращаем rows обратно
-    textarea.rows = originalRows;
-    textarea.style.height = '';
+        textarea.rows = originalRows;
+        textarea.style.height = '';
 
-    // Если полная высота больше 3 строк — показываем кнопку
-    if (fullHeight > threeLinesHeight + 5) {
-        toggleBtn.style.display = 'inline-block';
-    }
-
-    // Обработчик клика
-    let isExpanded = false;
-    toggleBtn.addEventListener('click', function() {
-        isExpanded = !isExpanded;
-
-        if (isExpanded) {
-            textarea.style.height = fullHeight + 'px';
-            this.textContent = 'Свернуть';
-        } else {
-            textarea.style.height = threeLinesHeight + 'px';
-            this.textContent = 'Читать далее';
+        if (fullHeight > threeLinesHeight + 5) {
+            toggleBtn.style.display = 'inline-block';
         }
+
+        let isExpanded = false;
+        toggleBtn.addEventListener('click', function() {
+            isExpanded = !isExpanded;
+            if (isExpanded) {
+                textarea.style.height = fullHeight + 'px';
+                this.textContent = 'Свернуть';
+            } else {
+                textarea.style.height = threeLinesHeight + 'px';
+                this.textContent = 'Читать далее';
+            }
+        });
     });
-});
+
     // ============================================
     // 5. Плавная прокрутка к блоку истории
     // ============================================
@@ -145,7 +138,8 @@ document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
     if (window.location.hash === '#history') {
         setTimeout(scrollToHistory, 200);
     }
-    // Активация вкладки «Черновик» при редиректе с параметром ?tab=draft
+
+    // Активация вкладки «Черновик»
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('tab') === 'draft') {
         const draftTab = document.getElementById('draft-tab');
@@ -155,7 +149,7 @@ document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
         }
     }
 
-    // Активация вкладки «Перефраз» при редиректе с параметром ?tab=paraphrase
+    // Активация вкладки «Перефраз»
     if (urlParams.get('tab') === 'paraphrase') {
         const paraphraseTab = document.getElementById('paraphrase-tab');
         if (paraphraseTab) {
@@ -164,18 +158,6 @@ document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
         }
     }
 
-    document.querySelectorAll('a[href*="#history"]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            setTimeout(scrollToHistory, 300);
-        });
-    });
-
-    // ============================================
-    // 6. Убираем автоматическую прокрутку вверх
-    // ============================================
-    // Прокручиваем к блоку истории, если есть сообщения (сохранение произошло)
-
-
     // Скрытие бейджей new при открытии вкладки
     document.querySelectorAll('#questionTabs button[data-bs-toggle="tab"]').forEach(function(tab) {
         tab.addEventListener('shown.bs.tab', function() {
@@ -183,25 +165,33 @@ document.querySelectorAll('.comment-textarea').forEach(function(textarea) {
             if (badge) {
                 badge.style.display = 'none';
             }
+
+            const tabType = this.dataset.tabType;
+            const pk = this.dataset.questionPk;
+            if (tabType && pk) {
+                fetch(`/questions/question/${pk}/mark-viewed/${tabType}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.status === 'ok') {
+                          // Обновляем nav_bar
+                        fetch('/ajax/navbar/')
+                            .then(res => res.json())
+                            .then(navData => {
+                                const navContainer = document.querySelector('.border-bottom.box-shadow.p-3');
+                                if (navContainer && navData.html) {
+                                    navContainer.innerHTML = navData.html;
+                                }
+                            });
+                      }
+                  });
+            }
         });
     });
 
-});
-
-
-document.querySelectorAll('#questionTabs button[data-bs-toggle="tab"]').forEach(tab => {
-    tab.addEventListener('shown.bs.tab', function() {
-        const tabType = this.dataset.tabType;
-        const pk = this.dataset.questionPk;
-        if (tabType && pk) {
-            fetch(`/questions/question/${pk}/mark-viewed/${tabType}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            });
-        }
-    });
 });
 
 function getCookie(name) {
