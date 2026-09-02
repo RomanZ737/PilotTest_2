@@ -1,7 +1,6 @@
 {% load user_tags %}
 
 <div class="border-bottom box-shadow p-3 px-md-4 mb-3">
-
     <div class="d-flex flex-wrap align-items-center justify-content-between">
         <h5 class="my-0 font-weight-normal">Pilot Test</h5>
         {% if user.is_authenticated %}
@@ -29,13 +28,13 @@
     </div>
 
     {% if user.is_authenticated %}
-    <!-- Нижняя строка: кнопки навигации -->
     <div class="d-flex flex-wrap align-items-center gap-2">
         <a class="btn {% if request.resolver_match.view_name == 'core:home' %}btn-light{% else %}btn-outline-light{% endif %}"
            href="{% url 'core:home' %}">Главная</a>
+
         {% if perms.users.view_customuser %}
             <a class="btn {% if is_users_section %}btn-light{% else %}btn-outline-light{% endif %}"
-               href="{% url 'users:list' %}">
+               href="{% url 'users:list' %}{% if new_users_count %}?new_only=1{% endif %}">
                 Пилоты
                 {% if new_users_count %}
                     <span class="badge bg-warning text-dark ms-1">new</span>
@@ -45,18 +44,18 @@
 
         {% if perms.questions.view_question %}
             <a class="btn {% if is_questions_section %}btn-light{% else %}btn-outline-light{% endif %}"
-               href="{% url 'questions:question_list' %}">
+               href="{% url 'questions:question_list' %}{% if new_questions_exist or new_themes_exist %}?new_only=1{% endif %}">
                 Вопросы
                 {% if new_questions_count %}
                     <span class="badge bg-warning text-dark ms-1">new</span>
                 {% endif %}
             </a>
         {% endif %}
+
         <a class="btn ms-auto mt-2 {% if is_description_section %}btn-light{% else %}btn-outline-light{% endif %}"
            href="{% url 'description:index' %}">
             <i class="bi bi-book"></i> Описание
         </a>
     </div>
     {% endif %}
-
 </div>

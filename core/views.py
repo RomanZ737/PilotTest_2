@@ -12,8 +12,15 @@ class HomeListView(LoginRequiredMixin, View):
         return render(request, 'core/home.html')
 
 
-def nav_bar_ajax(request):
-    html = render_to_string('core/nav_bar.html', request=request)
-    return JsonResponse({'html': html})
+def notification_flags_ajax(request):
+    from core.context_processors import unread_notifications
+    data = unread_notifications(request)
+    return JsonResponse({
+        'new_questions_exist': data.get('new_questions_exist', False),
+        'new_themes_exist': data.get('new_themes_exist', False),
+        'history_has_new': data.get('history_has_new', False),
+        'new_questions_count': data.get('new_questions_count', False),
+        'new_users_count': data.get('new_users_count', 0),
+    })
 
 
