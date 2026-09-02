@@ -20,7 +20,7 @@ from .views import (
     ParaphraseDeleteView,
     ParaphrasePublishView,
     MarkQuestionsViewedView,
-    MarkThemesViewedView
+    MarkThemesViewedView, MarkTabViewedView
 )
 from .apps import QuestionsConfig
 
@@ -50,4 +50,5 @@ urlpatterns = [
     path('history/', QuestionListView.as_view(), name='history'),
     path('mark-questions-viewed/', MarkQuestionsViewedView.as_view(), name='mark_questions_viewed'),
     path('mark-themes-viewed/', MarkThemesViewedView.as_view(), name='mark_themes_viewed'),
+    path('question/<int:pk>/mark-viewed/<str:tab_type>/', MarkTabViewedView.as_view(), name='mark_tab_viewed'),
 ]

@@ -16,7 +16,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from history.models import ActivityLog
 from questions.services import get_user_themes, get_new_questions_queryset, has_new_themes, reset_question_views, \
-    reset_theme_views
+    reset_theme_views, has_new_questions
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Q, Count
 
@@ -87,18 +87,29 @@ class QuestionListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                     logical_question=question,
                     tab_type='question'
                 ).first()
+                draft = question.drafts.order_by('-updated_at').first()
+                paraphrase = question.paraphrases.first()
+
+                is_new = False
+
                 if not last_view or last_view.viewed_at < question.updated_at:
                     question.is_new = True
-                else:
-                    question.is_new = False
+                elif draft:
+                    last_draft_view = TabView.objects.filter(user=self.request.user, logical_question=question,
+                                                         tab_type='draft').first()
+                    if not last_draft_view or last_draft_view.viewed_at < draft.updated_at:
+                        is_new = True
+                elif paraphrase:
+                    last_paraphrase_view = TabView.objects.filter(user=self.request.user, logical_question=question,
+                                                                  tab_type='paraphrase').first()
+                    if not last_paraphrase_view or last_paraphrase_view.viewed_at < paraphrase.updated_at:
+                        is_new = True
 
-        # Флаг для бейджа на вкладке "Вопросы"
+                question.is_new = is_new
 
-        # context['new_questions_exist'] = has_new_questions(self.request.user)
-        # context['new_questions_count'] = 0
+        context['new_questions_exist'] = has_new_questions(self.request.user)
+        context['new_themes_exist'] = has_new_themes(self.request.user)
 
-        # from questions.services import has_new_themes
-        # context['new_themes_exist'] = has_new_themes(self.request.user)
 
         last_view = TabView.objects.filter(
             user=self.request.user,
@@ -173,34 +184,26 @@ class QuestionDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
         if draft:
             context['draft'] = draft
             if self.request.user.is_authenticated:
-                tab_view, created = TabView.objects.update_or_create(
-                    user=self.request.user,
-                    logical_question=question,
-                    tab_type='draft',
-                    defaults={'viewed_at': timezone.now()}
-                )
-                context['draft'].is_new = created
+                last_view = TabView.objects.filter(user=self.request.user, logical_question=question,
+                                                   tab_type='draft').first()
+                context['draft'].is_new = not last_view or last_view.viewed_at < draft.updated_at
 
         paraphrase = question.paraphrases.first()
         if paraphrase:
             context['paraphrase'] = paraphrase
             if self.request.user.is_authenticated:
-                tab_view, created = TabView.objects.update_or_create(
-                    user=self.request.user,
-                    logical_question=question,
-                    tab_type='paraphrase',
-                    defaults={'viewed_at': timezone.now()}
-                )
-                context['paraphrase'].is_new = created
+                last_view = TabView.objects.filter(user=self.request.user, logical_question=question,
+                                                   tab_type='paraphrase').first()
+                context['paraphrase'].is_new = not last_view or last_view.viewed_at < paraphrase.updated_at
 
+        # Основной вопрос — фиксируем просмотр
         if self.request.user.is_authenticated:
-            tab_view, created = TabView.objects.update_or_create(
+            TabView.objects.update_or_create(
                 user=self.request.user,
                 logical_question=question,
                 tab_type='question',
                 defaults={'viewed_at': timezone.now()}
             )
-            context['question'].is_new = created
 
         history_qs = question.history.all()
 
@@ -413,11 +416,7 @@ class ThemesListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         if self.request.GET.get('new_only') == '1':
             new_theme_ids = []
             for theme in queryset:
-                last_view = TabView.objects.filter(
-                    user=self.request.user,
-                    theme=theme,
-                    tab_type='theme'
-                ).first()
+                last_view = TabView.objects.filter(user=self.request.user, theme=theme, tab_type='theme').first()
                 if not last_view or last_view.viewed_at < theme.updated_at:
                     new_theme_ids.append(theme.pk)
             queryset = queryset.filter(pk__in=new_theme_ids)
@@ -435,25 +434,15 @@ class ThemesListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        params = self.request.GET.copy()
-        params.pop('page', None)
-        #params.pop('new_only', None)
-        context['query_string'] = params.urlencode()
-
         for theme in context['themes_list']:
-            last_view = TabView.objects.filter(
-                user=self.request.user,
-                theme=theme,
-                tab_type='theme'
-            ).first()
+            last_view = TabView.objects.filter(user=self.request.user, theme=theme, tab_type='theme').first()
             if not last_view or last_view.viewed_at < theme.updated_at:
                 theme.is_new = True
             else:
                 theme.is_new = False
 
-        # from questions.services import has_new_questions, has_new_themes
-        # context['new_questions_exist'] = has_new_questions(self.request.user)
-        # context['new_themes_exist'] = has_new_themes(self.request.user)
+        context['new_questions_exist'] = has_new_questions(self.request.user)
+        context['new_themes_exist'] = has_new_themes(self.request.user)
 
         last_view = TabView.objects.filter(
             user=self.request.user,
@@ -1278,3 +1267,18 @@ class MarkThemesViewedView(LoginRequiredMixin, View):
         reset_theme_views(request.user)
         messages.success(request, 'Все темы отмечены как просмотренные.')
         return redirect(request.META.get('HTTP_REFERER', 'questions:themes_list'))
+
+
+class MarkTabViewedView(LoginRequiredMixin, View):
+    """Отмечает вкладку черновика или перефраза как просмотренную."""
+    def post(self, request, pk, tab_type):
+        question = get_object_or_404(Question, pk=pk)
+        if tab_type in ['draft', 'paraphrase']:
+            TabView.objects.update_or_create(
+                user=request.user,
+                logical_question=question,
+                tab_type=tab_type,
+                defaults={'viewed_at': timezone.now()}
+            )
+            return JsonResponse({'status': 'ok'})
+        return JsonResponse({'status': 'bad_request'}, status=400)

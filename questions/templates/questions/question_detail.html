@@ -46,7 +46,9 @@
                 data-bs-toggle="tab"
                 data-bs-target="#draft-pane"
                 type="button"
-                role="tab">
+                role="tab"
+                data-tab-type="draft"
+                data-question-pk="{{ question.pk }}">
             <i class="bi bi-pencil-square"></i> Черновик
             {% if draft.is_new %}
                 <span class="badge bg-warning text-dark ms-1 new-badge">new</span>
@@ -63,7 +65,9 @@
                 data-bs-toggle="tab"
                 data-bs-target="#paraphrase-pane"
                 type="button"
-                role="tab">
+                role="tab"
+                data-tab-type="paraphrase"
+                data-question-pk="{{ question.pk }}">
             <i class="bi bi-arrow-repeat"></i> Перефраз
             {% if not paraphrase.is_published %}
                 <span class="ms-1 d-inline-block bg-warning rounded-circle" style="width: 8px; height: 8px;" title="Не опубликован"></span>

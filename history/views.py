@@ -40,10 +40,6 @@ class CommentUpdateView(View):
         return redirect(f"{reverse('questions:question_detail', kwargs={'pk': comment.history.logical_question.pk})}#history")
 
 
-
-
-
-
 class ClearHistoryView(View):
     def post(self, request, question_pk):
         question = get_object_or_404(Question, pk=question_pk)

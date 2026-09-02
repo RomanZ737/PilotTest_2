@@ -33,16 +33,11 @@ def unread_notifications(request):
         new_themes_exist = False
 
     # История
-    last_view_hist = TabView.objects.filter(
-        user=request.user,
-        logical_question=None,
-        tab_type='question_history'
-    ).first()
+    last_view_hist = TabView.objects.filter(user=request.user, logical_question=None,
+                                            tab_type='question_history').first()
     last_viewed_hist = last_view_hist.viewed_at if last_view_hist else None
-
-    new_history = ActivityLog.objects.filter(
-        entity_type__in=['question', 'theme']
-    ).exclude(user=request.user)
+    new_history = ActivityLog.objects.filter(entity_type__in=['question', 'theme']).exclude(user=request.user)
+    available_themes = get_user_themes(request.user)
     if not request.user.is_superuser:
         new_history = new_history.filter(theme__in=available_themes)
     if last_viewed_hist:
@@ -56,4 +51,5 @@ def unread_notifications(request):
         'new_questions_exist': new_questions_exist,
         'new_themes_exist': new_themes_exist,
         'history_has_new': history_has_new,
+        'new_questions_count': new_questions_count,
     }

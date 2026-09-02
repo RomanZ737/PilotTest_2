@@ -17,15 +17,11 @@
                 Темы
             </h5>
         </a>
-        <a class="btn {% if request.resolver_match.view_name == 'questions:history' %}btn-light{% else %}btn-outline-light{% endif %}"
-           href="{% url 'questions:history' %}">
+
+        <a class="btn ..." href="{% url 'questions:history' %}">
             <h5 class="mb-0"><i class="bi bi-clock-history"></i> История
-            {% if history_has_new %}
-                 <span class="badge bg-warning text-dark ms-1">new</span>
-            {% endif %}
+            {% if history_has_new %}<span class="badge bg-warning text-dark ms-1">new</span>{% endif %}
             </h5>
-
-
         </a>
     </div>
     <div class="d-flex gap-2">

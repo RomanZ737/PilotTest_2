@@ -73,7 +73,7 @@ def get_new_questions_queryset(user, queryset):
 
 def has_new_questions(user):
     """Возвращает True, если есть хотя бы один новый вопрос для пользователя."""
-    from .models import Question
+
     available_themes = get_user_themes(user)
     if not available_themes.exists():
         return False

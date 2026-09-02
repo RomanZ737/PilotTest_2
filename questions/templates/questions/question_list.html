@@ -132,13 +132,13 @@
         <button type="submit" class="btn btn-primary flex-shrink-0" title="Применить фильтры">
             <i class="bi bi-funnel"></i>
         </button>
-        {% if new_questions_exist %}
-        <a href="?new_only=1{% if query_string %}&{{ query_string }}{% endif %}"
-           class="btn btn-outline-secondary flex-shrink-0 {% if request.GET.new_only == '1' %}active{% endif %}"
-           title="Показать только новые">
-            <i class="bi bi-bell"></i>
-        </a>
-        {% endif %}
+<!--        {% if new_questions_exist %}-->
+<!--        <a href="?new_only=1{% if query_string %}&{{ query_string }}{% endif %}"-->
+<!--           class="btn btn-outline-secondary flex-shrink-0 {% if request.GET.new_only == '1' %}active{% endif %}"-->
+<!--           title="Показать только новые">-->
+<!--            <i class="bi bi-bell"></i>-->
+<!--        </a>-->
+<!--        {% endif %}-->
         <a href="{% url 'questions:question_list' %}"
            class="btn btn-outline-secondary flex-shrink-0"
            title="Сбросить фильтры">
@@ -160,7 +160,15 @@
                                 <th scope="col" style="width: 40%;">Вопрос</th>
                                 <th scope="col" style="width: 20%;">Тема</th>
                                 <th scope="col" style="width: 15%;">Тип ВС</th>
-                                <th scope="col" style="width: 8%;">Изменения</th>
+                                <th scope="col" style="width: 8%;">Изменения
+                                {% if new_questions_exist %}
+                                <a href="?new_only=1{% if query_string %}&{{ query_string }}{% endif %}"
+                                   class="btn btn-outline-secondary flex-shrink-0 {% if request.GET.new_only == '1' %}active{% endif %}"
+                                   title="Показать только новые">
+                                    <i class="bi bi-bell"></i>
+                                </a>
+                                {% endif %}
+                                </th>
                                 <th scope="col" style="width: 10%;">Статус</th>
                                 <th scope="col" style="width: 10%;" class="text-end">Действия</th>
                             </tr>

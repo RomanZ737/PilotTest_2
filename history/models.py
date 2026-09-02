@@ -174,12 +174,8 @@ class TabView(models.Model):
         null=True,
         blank=True,
     )
-    tab_type = models.CharField(
-        max_length=20,
-        choices=TAB_TYPES,
-        verbose_name='Тип вкладки'
-    )
-    viewed_at = models.DateTimeField(auto_now=True, verbose_name='Дата просмотра')
+    tab_type = models.CharField(max_length=20, choices=TAB_TYPES)
+    viewed_at = models.DateTimeField(auto_now=True)
 
     theme = models.ForeignKey(
         'questions.Themes',
